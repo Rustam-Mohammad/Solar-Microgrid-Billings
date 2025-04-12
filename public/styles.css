@@ -1,0 +1,206 @@
+body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  margin: 0;
+  padding: 20px;
+  background-color: #f5f7fa;
+  color: #2c3e50;
+}
+
+h1 {
+  color: #2c3e50;
+  text-align: center;
+  margin-bottom: 30px;
+  font-size: 2em;
+}
+
+/* Forms and Inputs */
+form {
+  max-width: 600px;
+  margin: 0 auto;
+  padding: 25px;
+  background-color: #fff;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 12px 0;
+  font-weight: 500;
+}
+
+input, select {
+  width: 60%;
+  padding: 10px;
+  margin: 5px 0;
+  border: 1px solid #ccd1d9;
+  border-radius: 6px;
+  box-sizing: border-box;
+  font-size: 1em;
+}
+
+input[readonly] {
+  background-color: #eceff1;
+}
+
+/* Password Toggle */
+.password-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: calc(100% - 22px);
+}
+
+.password-container input {
+  width: 80%;
+  margin-right: 10px;
+}
+
+.password-toggle {
+  padding: 6px 12px;
+  font-size: 0.9em;
+  background-color: #ecf0f1;
+  border: 1px solid #ccd1d9;
+  border-radius: 4px;
+  cursor: pointer;
+  color: #7f8c8d;
+  transition: background-color 0.3s;
+}
+
+.password-toggle:hover {
+  background-color: #dfe6e9;
+}
+
+/* Buttons */
+button {
+  padding: 12px 25px;
+  margin: 10px 0;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  background-color: #1abc9c;
+  color: white;
+  font-size: 1em;
+  transition: background-color 0.3s, transform 0.2s;
+}
+
+button:hover {
+  background-color: #16a085;
+  transform: translateY(-2px);
+}
+
+.logout-btn {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  background-color: #e74c3c;
+}
+
+.logout-btn:hover {
+  background-color: #c0392b;
+  transform: none;
+}
+
+.back-btn {
+  background-color: #95a5a6;
+  display: block;
+  margin: 20px auto;
+}
+
+.back-btn:hover {
+  background-color: #7f8c8d;
+}
+
+/* Dashboard Buttons */
+.button-container {
+  text-align: center;
+  margin: 30px 0;
+}
+
+.button-container button {
+  display: block;
+  width: 250px;
+  margin: 15px auto;
+}
+
+/* Household Cards */
+.hh-card {
+  background-color: #fff;
+  padding: 20px;
+  margin: 15px 0;
+  border-radius: 10px;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.hh-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+}
+
+.hh-card h3 {
+  margin: 0 0 10px 0;
+  color: #34495e;
+  font-size: 1.3em;
+}
+
+.hh-card p {
+  margin: 0;
+  color: #7f8c8d;
+}
+
+/* Submission Cards */
+.submission-card {
+  background-color: #fff;
+  padding: 20px;
+  margin: 15px 0;
+  border-radius: 10px;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.submission-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.15);
+}
+
+/* Submission Details (hh-view.html) */
+#submissionDetails {
+  max-width: 700px;
+  margin: 20px auto;
+  padding: 25px;
+  background-color: #fff;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+#submissionDetails label {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 12px 0;
+}
+
+#submissionDetails input {
+  width: 60%;
+}
+
+#submissionDetails img {
+  margin-top: 10px;
+  border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+#billingSection {
+  margin-top: 25px;
+}
+
+#billingSection h2 {
+  color: #34495e;
+  font-size: 1.4em;
+  margin-bottom: 15px;
+}

@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>VEC Submission Form</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <h1>VEC Submission Form</h1>
+  <form id="vecForm">
+    <label>State: <input type="text" name="state" value="Jharkhand" readonly></label><br>
+    <label>District: <input type="text" name="district" value="Dumka" readonly></label><br>
+    <label>Block: <input type="text" name="block" value="Kurdeg" readonly></label><br>
+    <label>GP: <input type="text" name="gp" value="Barkibiura" readonly></label><br>
+    <label>Village: <input type="text" name="village" value="Saraipani" readonly></label><br>
+    <label>Hamlet: <input type="text" name="hamlet" value="Saraipani" readonly></label><br>
+    <label>Name of VEC: <input type="text" name="vec_name" value="Prakash Saur Oorja Samiti" readonly></label><br>
+    <label>Microgrid ID: <input type="text" name="micro_id" value="MG-SARAIPANI" readonly></label><br>
+    <label>Data Entry Date: <input type="date" name="submission_date" required readonly></label><br>
+    <label>General Issues Observed:
+      <select name="general_issues" multiple>
+        <option value="No Issue" selected>No Issue</option>
+        <option value="Damaged Solar Panel">Damaged Solar Panel</option>
+        <option value="Issues with physical structure">Issues with physical structure</option>
+        <option value="Inverter fault/damage">Inverter fault/damage</option>
+        <option value="Battery issues/failure">Battery issues/failure</option>
+        <option value="General Wiring and Switchgear issues">General Wiring and Switchgear issues</option>
+        <option value="Issues with distribution network">Issues with distribution network</option>
+      </select>
+    </label><br>
+    <div id="issueImgDiv" style="display: none;">
+      <label>Issue Image: <input type="file" name="issue_img" accept="image/*" capture="camera"></label><br>
+    </div>
+    <label>Amount Collected for the Month: <input type="number" name="amount_collected" step="0.01" readonly></label><br>
+    <label>Expenditure for the Month: <input type="number" name="expenditure" step="0.01" required></label><br>
+    <label>Total Saving for the Month: <input type="number" name="saving_month" step="0.01" readonly></label><br>
+    <label>Total Saving: <input type="number" name="total_saving" step="0.01" required></label><br>
+    <label>Amount in Bank: <input type="number" name="amount_bank" step="0.01" required></label><br>
+    <label>Amount in Hand: <input type="number" name="amount_hand" step="0.01" readonly></label><br>
+    <button type="submit">Submit</button>
+  </form>
+  <button id="backBtn" class="back-btn">Back</button>
+  <script src="/scripts/vec-form.js"></script>
+</body>
+</html>

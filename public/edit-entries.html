@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Edit Entries</title>
+  <link rel="stylesheet" href="/styles.css">
+  <style>
+    .filter-container {
+      display: flex;
+      gap: 15px;
+      align-items: center;
+      margin: 20px 0;
+      flex-wrap: wrap;
+    }
+    .dropdown {
+      position: relative;
+      display: inline-block;
+    }
+    .dropdown-label {
+      padding: 8px 24px 8px 12px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background-color: #fff;
+      cursor: pointer;
+      font-size: 14px;
+      min-width: 150px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: relative;
+    }
+    .dropdown-label::after {
+      content: '▼';
+      position: absolute;
+      right: 8px;
+      font-size: 12px;
+    }
+    .dropdown-content {
+      display: none;
+      position: absolute;
+      background-color: #fff;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+      z-index: 10;
+      min-width: 150px;
+      max-height: 200px;
+      overflow-y: auto;
+    }
+    .dropdown-content label {
+      display: flex;
+      align-items: center;
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+    .dropdown-content label:hover {
+      background-color: #f5f5f5;
+    }
+    .dropdown-content input[type="checkbox"] {
+      margin-right: 8px;
+    }
+    .card {
+      border: 1px solid #ddd;
+      padding: 15px;
+      margin: 10px 0;
+      border-radius: 4px;
+      background-color: #fff;
+    }
+    .card .edit-btn, .card .remove-btn {
+      padding: 5px 10px;
+      border: none;
+      border-radius: 4px;
+      color: white;
+      cursor: pointer;
+      font-size: 12px;
+      margin-top: 10px;
+      margin-right: 10px;
+    }
+    .card .edit-btn {
+      background-color: #26A69A;
+    }
+    .card .edit-btn:hover {
+      background-color: #2C7A7B;
+    }
+    .card .remove-btn {
+      background-color: #EF5350;
+    }
+    .card .remove-btn:hover {
+      background-color: #D32F2F;
+    }
+    .edit-form {
+      display: none;
+      border: 1px solid #ccc;
+      padding: 15px;
+      margin-top: 10px;
+      border-radius: 4px;
+      background-color: #f5f5f5;
+    }
+    .edit-form input, .edit-form textarea, .edit-form select {
+      width: 100%;
+      padding: 5px;
+      margin: 5px 0;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .edit-form button {
+      margin-top: 10px;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      background-color: #26A69A;
+      color: white;
+      cursor: pointer;
+    }
+    .edit-form button:hover {
+      background-color: #2C7A7B;
+    }
+    img {
+      max-width: 100px;
+    }
+  </style>
+</head>
+<body>
+  <button id="logoutBtn" class="logout-btn">Logout</button>
+  <h1>Edit Entries</h1>
+  <div class="filter-container">
+    <div class="dropdown">
+      <div class="dropdown-label" id="typeLabel">Type (HH/VEC)</div>
+      <div class="dropdown-content" id="typeDropdown">
+        <label><input type="checkbox" value="HH">HH</label>
+        <label><input type="checkbox" value="VEC">VEC</label>
+      </div>
+    </div>
+    <div class="dropdown">
+      <div class="dropdown-label" id="hamletLabel">Hamlet</div>
+      <div class="dropdown-content" id="hamletDropdown"></div>
+    </div>
+    <div class="dropdown">
+      <div class="dropdown-label" id="monthLabel">Month</div>
+      <div class="dropdown-content" id="monthDropdown"></div>
+    </div>
+  </div>
+  <div id="entriesContainer"></div>
+  <button id="backBtn" class="back-btn">Back</button>
+  <script src="/scripts/edit-entries.js"></script>
+</body>
+</html>

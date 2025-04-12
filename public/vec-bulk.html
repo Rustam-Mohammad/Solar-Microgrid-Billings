@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Bulk VEC Upload</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <button id="logoutBtn" class="logout-btn">Logout</button>
+  <h1>Bulk VEC Upload</h1>
+  <p>Upload a CSV file with columns: hamlet, vec_name, state, district, block, gp, village, microgrid_id</p>
+  <form id="vecBulkForm">
+    <input type="file" name="file" accept=".csv" required>
+    <button type="submit">Upload</button>
+  </form>
+  <button id="backBtn" class="back-btn">Back</button>
+  <script src="/scripts/vec-bulk.js"></script>
+</body>
+</html>

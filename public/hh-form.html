@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>HH Submission Form</title>
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <h1>HH Submission Form</h1>
+  <form id="hhForm">
+    <label>State: <input type="text" name="state" value="Jharkhand" readonly></label><br>
+    <label>District: <input type="text" name="district" value="Dumka" readonly></label><br>
+    <label>Block: <input type="text" name="block" value="Kurdeg" readonly></label><br>
+    <label>GP: <input type="text" name="gp" value="Barkibiura" readonly></label><br>
+    <label>Village: <input type="text" name="village" value="Saraipani" readonly></label><br>
+    <label>Hamlet: <input type="text" name="hamlet" value="Saraipani" readonly></label><br>
+    <label>VEC Name: <input type="text" name="vec_name" value="Prakash Saur Oorja Samiti" readonly></label><br>
+    <label>Microgrid ID: <input type="text" name="micro_id" value="MG-SARAIPANI" readonly></label><br>
+    <label>Head of Household: <input type="text" name="hh_head" readonly></label><br>
+    <label>Meter Serial Number: <input type="text" name="meter_num" value="M12345" readonly></label><br>
+    <label>Customer ID: <input type="text" name="customer_id" readonly></label><br>
+    <label>Gender: <input type="text" name="cust_gender" value="Male" readonly></label><br>
+    <label>Date of Reading: <input type="date" name="read_date" required></label><br>
+    <label>Individual Issues:
+      <select name="individual_issues" multiple>
+        <option value="No Issue" selected>No Issue</option>
+        <option value="Meter Tampering">Meter Tampering</option>
+        <option value="Broken Meter">Broken Meter</option>
+        <option value="Wiring Issues">Wiring and Earthing Issues</option>
+        <option value="Switch Faults">Switch/Wire Faults</option>
+        <option value="Migrated">Migrated</option>
+        <option value="Wave off">Wave off</option>
+      </select>
+    </label><br>
+    <div id="issueImgDiv" style="display: none;">
+      <label>Add Image: <input type="file" name="issue_img" accept="image/*" capture="camera"></label><br>
+    </div>
+    <div id="billingSection">
+      <h2>Billing Section</h2>
+      <label>Bill Number: <input type="text" name="bill_id" readonly></label><br>
+      <label>Current Meter Reading: <input type="number" name="meter_read" step="0.1" required></label><br>
+      <label>Meter Reading Image: <input type="file" name="meter_image" accept="image/*" capture="camera"></label><br>
+      <label>Previous Month Reading: <input type="number" name="prev_read" step="0.1"></label><br>
+      <label>Units Consumed: <input type="number" name="net_consumed" readonly></label><br>
+      <label>Current Month Bill: <input type="number" name="current_bill" readonly></label><br>
+      <label>Past Dues: <input type="number" name="past_due"></label><br>
+      <label>Total Bill Due: <input type="number" name="total_due" readonly></label><br>
+      <label>Amount Paid: <input type="number" name="amount_paid" step="0.01" required></label><br>
+      <label>Balance Amount: <input type="number" name="amount_balance" readonly></label><br>
+    </div>
+    <button type="submit" id="submitBtn">Submit</button>
+    <button type="button" id="draftBtn">Save as Draft</button>
+  </form>
+  <button id="backBtn" class="back-btn">Back</button>
+  <script src="/scripts/hh-form.js"></script>
+</body>
+</html>
