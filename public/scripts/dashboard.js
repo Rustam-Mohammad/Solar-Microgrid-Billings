@@ -3,41 +3,41 @@ document.addEventListener('DOMContentLoaded', () => {
   const role = localStorage.getItem('role');
   const hamlet = localStorage.getItem('hamlet');
 
+  // Redirect if not logged in
   if (!username || !role) {
     alert('Please log in first!');
     window.location.href = '/index.html';
     return;
   }
 
+  // Display username
   document.getElementById('usernameDisplay').textContent = username;
 
+  // Button event listeners
   const hhFormBtn = document.getElementById('hhFormBtn');
   const vecFormBtn = document.getElementById('vecFormBtn');
   const backBtn = document.getElementById('backBtn');
   const logoutBtn = document.getElementById('logoutBtn');
+  const insuranceFormBtn = document.getElementById('insuranceFormBtn');
 
-  if (hhFormBtn) {
-    hhFormBtn.addEventListener('click', () => {
-      window.location.href = `/hh-list.html${hamlet ? '?hamlet=' + encodeURIComponent(hamlet) : ''}`;
-    });
-  }
+  hhFormBtn.addEventListener('click', () => {
+    window.location.href = `/hh-list.html${hamlet ? '?hamlet=' + encodeURIComponent(hamlet) : ''}`;
+  });
 
-  if (vecFormBtn) {
-    vecFormBtn.addEventListener('click', () => {
-      window.location.href = `/vec-submissions.html${hamlet ? '?hamlet=' + encodeURIComponent(hamlet) : ''}`;
-    });
-  }
+  vecFormBtn.addEventListener('click', () => {
+    window.location.href = `/vec-submissions.html${hamlet ? '?hamlet=' + encodeURIComponent(hamlet) : ''}`;
+  });
 
-  if (backBtn) {
-    backBtn.addEventListener('click', () => {
-      window.location.href = '/index.html';
-    });
-  }
+  insuranceFormBtn.addEventListener('click', () => {
+    window.location.href = `/insurance-submissions.html${hamlet ? '?hamlet=' + encodeURIComponent(hamlet) : ''}`;
+  });
 
-  if (logoutBtn) {
-    logoutBtn.addEventListener('click', () => {
-      localStorage.clear();
-      window.location.href = '/index.html';
-    });
-  }
+  backBtn.addEventListener('click', () => {
+    window.location.href = '/index.html';
+  });
+
+  logoutBtn.addEventListener('click', () => {
+    localStorage.clear();
+    window.location.href = '/index.html';
+  });
 });

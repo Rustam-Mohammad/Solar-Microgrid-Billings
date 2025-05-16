@@ -10,7 +10,11 @@ document.getElementById('loginBtn').addEventListener('click', function() {
   .then(data => {
     if (data.success) {
       localStorage.setItem('user', JSON.stringify({ username: data.username, role: data.role }));
-      window.location.href = '/dashboard.html';
+      if (data.role === 'ic-operator') {
+        window.location.href = '/ic-dashboard.html';
+      } else {
+        window.location.href = '/dashboard.html';
+      }
     } else {
       alert('Login failed!');
     }

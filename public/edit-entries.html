@@ -2,145 +2,235 @@
 <html>
 <head>
   <title>Edit Entries</title>
-  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/styles.css?v=15">
+  <link href="https://fonts.googleapis.com/css2?family=Segoe+UI:wght@400;700&display=swap" rel="stylesheet">
   <style>
-    .filter-container {
-      display: flex;
-      gap: 15px;
-      align-items: center;
-      margin: 20px 0;
-      flex-wrap: wrap;
+    /* Modal styles */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0; top: 0; width: 100%; height: 100%;
+      overflow: auto;
+      background-color: rgba(0,0,0,0.5);
     }
-    .dropdown {
-      position: relative;
-      display: inline-block;
+    .modal-content {
+      background-color: #fefefe;
+      margin: 5% auto;
+      padding: 20px;
+      border: 1px solid #888;
+      width: 90%;
+      max-width: 700px;
+      border-radius: 8px;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
     }
-    .dropdown-label {
-      padding: 8px 24px 8px 12px;
+    .close-btn {
+      color: #aaa;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    .close-btn:hover,
+    .close-btn:focus {
+      color: black;
+      text-decoration: none;
+      cursor: pointer;
+    }
+    .form-group {
+      margin-bottom: 12px;
+    }
+    .form-group label {
+      display: block;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 6px 8px;
+      box-sizing: border-box;
       border: 1px solid #ccc;
       border-radius: 4px;
-      background-color: #fff;
+    }
+    .form-btn {
+      background-color: #0078d7;
+      color: white;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    .form-btn:hover {
+      background-color: #005a9e;
+    }
+    /* Custom styles for burgundy buttons */
+    #clearFilterBtn {
+      background-color: #800020;
+    }
+    #clearFilterBtn:hover {
+      background-color: #66001a;
+    }
+    .edit-btn {
+      background-color: #800020;
+      color: white;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 4px;
       cursor: pointer;
       font-size: 14px;
-      min-width: 150px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      position: relative;
     }
-    .dropdown-label::after {
-      content: '▼';
-      position: absolute;
-      right: 8px;
-      font-size: 12px;
-    }
-    .dropdown-content {
-      display: none;
-      position: absolute;
-      background-color: #fff;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-      z-index: 10;
-      min-width: 150px;
-      max-height: 200px;
-      overflow-y: auto;
-    }
-    .dropdown-content label {
-      display: flex;
-      align-items: center;
-      padding: 8px 12px;
-      cursor: pointer;
-    }
-    .dropdown-content label:hover {
-      background-color: #f5f5f5;
-    }
-    .dropdown-content input[type="checkbox"] {
-      margin-right: 8px;
-    }
-    .card {
-      border: 1px solid #ddd;
-      padding: 15px;
-      margin: 10px 0;
-      border-radius: 4px;
-      background-color: #fff;
-    }
-    .card .edit-btn, .card .remove-btn {
-      padding: 5px 10px;
-      border: none;
-      border-radius: 4px;
-      color: white;
-      cursor: pointer;
-      font-size: 12px;
-      margin-top: 10px;
-      margin-right: 10px;
-    }
-    .card .edit-btn {
-      background-color: #26A69A;
-    }
-    .card .edit-btn:hover {
-      background-color: #2C7A7B;
-    }
-    .card .remove-btn {
-      background-color: #EF5350;
-    }
-    .card .remove-btn:hover {
-      background-color: #D32F2F;
-    }
-    .edit-form {
-      display: none;
-      border: 1px solid #ccc;
-      padding: 15px;
-      margin-top: 10px;
-      border-radius: 4px;
-      background-color: #f5f5f5;
-    }
-    .edit-form input, .edit-form textarea, .edit-form select {
-      width: 100%;
-      padding: 5px;
-      margin: 5px 0;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-    }
-    .edit-form button {
-      margin-top: 10px;
-      padding: 8px 16px;
-      border: none;
-      border-radius: 4px;
-      background-color: #26A69A;
-      color: white;
-      cursor: pointer;
-    }
-    .edit-form button:hover {
-      background-color: #2C7A7B;
-    }
-    img {
-      max-width: 100px;
+    .edit-btn:hover {
+      background-color: #66001a;
     }
   </style>
 </head>
 <body>
-  <button id="logoutBtn" class="logout-btn">Logout</button>
-  <h1>Edit Entries</h1>
-  <div class="filter-container">
-    <div class="dropdown">
-      <div class="dropdown-label" id="typeLabel">Type (HH/VEC)</div>
-      <div class="dropdown-content" id="typeDropdown">
-        <label><input type="checkbox" value="HH">HH</label>
-        <label><input type="checkbox" value="VEC">VEC</label>
+  <div class="dashboard-container">
+    <header class="dashboard-header">
+      <div class="welcome-logout">
+        <p>Welcome, <span id="usernameDisplay"></span>!</p>
+      </div>
+      <div class="header-content">
+        <h1>Edit Entries</h1>
+        <p class="subtitle">Solar Microgrid Project Billing</p>
+      </div>
+      <button id="logoutBtn" class="logout-btn">Logout</button>
+    </header>
+    <div class="search-container">
+      <div class="form-group">
+        <input type="text" id="hhSearch" placeholder="Search by Name, Customer ID, or Hamlet">
       </div>
     </div>
-    <div class="dropdown">
-      <div class="dropdown-label" id="hamletLabel">Hamlet</div>
-      <div class="dropdown-content" id="hamletDropdown"></div>
+    <div class="filter-container">
+      <div class="dropdown">
+        <div class="dropdown-label" id="typeLabel">Type (HH/VEC)</div>
+        <div class="dropdown-content" id="typeDropdown">
+          <label><input type="checkbox" value="HH">HH</label>
+          <label><input type="checkbox" value="VEC">VEC</label>
+        </div>
+      </div>
+      <div class="dropdown">
+        <div class="dropdown-label" id="hamletLabel">Hamlet</div>
+        <div class="dropdown-content" id="hamletDropdown"></div>
+      </div>
+      <div class="dropdown">
+        <div class="dropdown-label" id="monthLabel">Month</div>
+        <div class="dropdown-content" id="monthDropdown"></div>
+      </div>
+      <button id="clearFilterBtn" class="form-btn">Clear Filter</button>
     </div>
-    <div class="dropdown">
-      <div class="dropdown-label" id="monthLabel">Month</div>
-      <div class="dropdown-content" id="monthDropdown"></div>
+    <div class="submissions-list">
+      <div id="entriesContainer"></div>
+    </div>
+    <button id="backBtn" class="large-back-btn">Back</button>
+  </div>
+
+  <!-- Modal for VEC Edit Form -->
+  <div id="vecEditModal" class="modal" aria-hidden="true" role="dialog" aria-labelledby="vecEditModalTitle" aria-modal="true">
+    <div class="modal-content">
+      <span class="close-btn" id="vecEditModalClose" aria-label="Close">&times;</span>
+      <h2 id="vecEditModalTitle">Edit VEC Submission</h2>
+      <form id="vecEditForm" enctype="multipart/form-data" novalidate>
+        <div class="form-group">
+          <label for="state">State</label>
+          <input type="text" id="state" name="state" readonly>
+        </div>
+        <div class="form-group">
+          <label for="district">District</label>
+          <input type="text" id="district" name="district" readonly>
+        </div>
+        <div class="form-group">
+          <label for="block">Block</label>
+          <input type="text" id="block" name="block" readonly>
+        </div>
+        <div class="form-group">
+          <label for="gp">GP</label>
+          <input type="text" id="gp" name="gp" readonly>
+        </div>
+        <div class="form-group">
+          <label for="village">Village</label>
+          <input type="text" id="village" name="village" readonly>
+        </div>
+        <div class="form-group">
+          <label for="hamlet">Hamlet</label>
+          <input type="text" id="hamlet" name="hamlet" readonly>
+        </div>
+        <div class="form-group">
+          <label for="vec_name">VEC Name</label>
+          <input type="text" id="vec_name" name="vec_name" readonly>
+        </div>
+        <div class="form-group">
+          <label for="microgrid_id">Microgrid ID</label>
+          <input type="text" id="microgrid_id" name="microgrid_id" readonly>
+        </div>
+        <div class="form-group">
+          <label for="submission_date">Submission Date</label>
+          <input type="date" id="submission_date" name="submission_date" required>
+        </div>
+        <div class="form-group">
+          <label for="general_issues">General Issues</label>
+          <select id="general_issues" name="general_issues" multiple>
+            <option value="No Issue">No Issue</option>
+            <option value="Power Outage">Power Outage</option>
+            <option value="Equipment Failure">Equipment Failure</option>
+            <option value="Billing Dispute">Billing Dispute</option>
+            <option value="Other">Other</option>
+          </select>
+        </div>
+        <div class="form-group" id="issueImgDiv" style="display:none;">
+          <label for="issue_img">Issue Image</label>
+          <input type="file" id="issue_img" name="issue_img" accept="image/*">
+        </div>
+        <div class="form-group">
+          <label for="total_monthly_meter_reading_hh">Total Monthly Meter Reading HH</label>
+          <input type="number" id="total_monthly_meter_reading_hh" name="total_monthly_meter_reading_hh" step="0.01" readonly>
+        </div>
+        <div class="form-group">
+          <label for="total_meter_reading_grid">Total Meter Reading Grid</label>
+          <input type="number" id="total_meter_reading_grid" name="total_meter_reading_grid" step="0.01" readonly>
+        </div>
+        <div class="form-group">
+          <label for="amount_collected">Amount Collected for the Month</label>
+          <input type="number" id="amount_collected" name="amount_collected" step="0.01" readonly>
+        </div>
+        <div class="form-group">
+          <label for="amount_other_source">Amount from Other Sources</label>
+          <input type="number" id="amount_other_source" name="amount_other_source" step="0.01">
+        </div>
+        <div class="form-group">
+          <label for="total_amount_collected">Total Amount Collected for the Month</label>
+          <input type="number" id="total_amount_collected" name="total_amount_collected" step="0.01" readonly>
+        </div>
+        <div class="form-group">
+          <label for="expenditure">Expenditure for the Month</label>
+          <input type="number" id="expenditure" name="expenditure" step="0.01">
+        </div>
+        <div class="form-group">
+          <label for="saving_month">Savings for this Month</label>
+          <input type="number" id="saving_month" name="saving_month" step="0.01" readonly>
+        </div>
+        <div class="form-group">
+          <label for="total_saving">Total Savings</label>
+          <input type="number" id="total_saving" name="total_saving" step="0.01">
+        </div>
+        <div class="form-group">
+          <label for="amount_bank">Amount in Bank</label>
+          <input type="number" id="amount_bank" name="amount_bank" step="0.01">
+        </div>
+        <div class="form-group">
+          <label for="amount_hand">Amount in Hand</label>
+          <input type="number" id="amount_hand" name="amount_hand" step="0.01" readonly>
+        </div>
+        <div class="form-group">
+          <button type="submit" id="vecEditSubmitBtn" class="form-btn">Save Changes</button>
+          <button type="button" id="vecEditCancelBtn" class="form-btn">Cancel</button>
+        </div>
+      </form>
     </div>
   </div>
-  <div id="entriesContainer"></div>
-  <button id="backBtn" class="back-btn">Back</button>
-  <script src="/scripts/edit-entries.js"></script>
+
+  <script src="/scripts/edit-entries.js?v=15"></script>
 </body>
 </html>

@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Insurance Claim Form</title>
+  <link rel="stylesheet" href="/styles.css?v=11">
+</head>
+<body data-page="insurance-claim-form">
+  <div class="dashboard-container">
+    <header class="dashboard-header">
+      <div class="header-content">
+        <h1>Solar Microgrid Project</h1>
+        <p class="page-title">Insurance Claim Form</p>
+      </div>
+      <button id="logoutBtn" class="logout-btn">Logout</button>
+    </header>
+    <div class="submission-card">
+      <form id="claimForm">
+        <div class="form-group">
+          <label for="claimRefNumber">Claim Reference Number</label>
+          <input type="text" id="claimRefNumber" name="claimRefNumber" readonly>
+        </div>
+        <div class="form-group">
+          <label for="claimDate">Claim Date</label>
+          <input type="date" id="claimDate" name="claimDate" readonly>
+        </div>
+        <div class="form-group">
+          <label for="claimingFor">Claiming For</label>
+          <input type="text" id="claimingFor" name="claimingFor" readonly>
+        </div>
+        <div class="form-group">
+          <label for="hamlet">Hamlet</label>
+          <input type="text" id="hamlet" name="hamlet" readonly>
+        </div>
+        <div class="form-group">
+          <label for="vecName">VEC Name</label>
+          <input type="text" id="vecName" name="vecName" readonly>
+        </div>
+        <div class="form-group">
+          <label for="microgridId">Microgrid ID</label>
+          <input type="text" id="microgridId" name="microgridId" readonly>
+        </div>
+        <div class="form-group">
+          <label for="claimPhoto">Claim Application Photo</label>
+          <a href="#" id="claimPhotoLink" target="_blank">View Photo</a>
+        </div>
+        <div class="button-group">
+          <button type="button" id="backBtn" class="form-btn">Back</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <script src="/scripts/insurance-claim-form.js?v=1"></script>
+</body>
+</html>

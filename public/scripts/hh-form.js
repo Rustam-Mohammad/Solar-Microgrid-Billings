@@ -19,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function checkSubmissionLimit() {
     const readDate = form.read_date.value;
     if (!readDate) return;
-    const submissionMonth = readDate.slice(0, 7); // YYYY-MM
+    const submissionMonth = readDate.slice(0, 7);
     fetch(`/api/hh/${encodeURIComponent(customerId)}`)
       .then(response => response.json())
       .then(data => {
@@ -35,6 +35,22 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       })
       .catch(error => console.error('Error checking submission limit:', error));
+  }
+
+  function validateMeterReading(showAlert = true) {
+    const selectedIssues = Array.from(issueSelect.selectedOptions).map(opt => opt.value);
+    if (selectedIssues.includes('Migrated') || selectedIssues.includes('Wave off')) {
+      return true; // Skip validation if no billing
+    }
+    const meterRead = parseFloat(form.meter_read.value) || 0;
+    const prevRead = parseFloat(form.prev_read.value) || 0;
+    if (form.meter_read.value && meterRead < prevRead) {
+      if (showAlert) {
+        alert('Current Meter Reading cannot be less than Previous Reading (' + prevRead + ').');
+      }
+      return false;
+    }
+    return true;
   }
 
   fetch('/api/hh/' + encodeURIComponent(customerId))
@@ -106,7 +122,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       makeStaticFieldsReadOnly();
       updateFormBasedOnIssues();
-      checkSubmissionLimit(); // Initial check
+      checkSubmissionLimit();
     })
     .catch(error => {
       console.error('Error loading submission:', error);
@@ -114,22 +130,36 @@ document.addEventListener('DOMContentLoaded', () => {
       window.location.href = '/hh-list.html';
     });
 
-  issueSelect.addEventListener('change', updateFormBasedOnIssues);
-  form.meter_read.addEventListener('input', updateBilling);
+  issueSelect.addEventListener('change', () => {
+    updateFormBasedOnIssues();
+    updateBilling();
+  });
+  form.meter_read.addEventListener('blur', () => {
+    validateMeterReading();
+    updateBilling();
+  });
   form.prev_read.addEventListener('input', updateBilling);
   form.past_due.addEventListener('input', updateBilling);
   form.amount_paid.addEventListener('input', updateBilling);
   form.read_date.addEventListener('change', checkSubmissionLimit);
 
   function updateBilling() {
-    if (mode === 'readonly' || billingSection.style.display === 'none') return;
+    if (mode === 'readonly' || !billingSection) return;
     const meterRead = parseFloat(form.meter_read.value) || 0;
     const prevRead = parseFloat(form.prev_read.value) || 0;
     const pastDue = parseFloat(form.past_due.value) || 0;
     const amountPaid = parseFloat(form.amount_paid.value) || 0;
+    const selectedIssues = Array.from(issueSelect.selectedOptions).map(opt => opt.value);
 
-    const unitsConsumed = meterRead - prevRead;
-    const currentBill = (10 * unitsConsumed) + 100;
+    const unitsConsumed = meterRead >= prevRead ? meterRead - prevRead : 0;
+    let currentBill;
+    if (selectedIssues.includes('Partial Waive Off - Fixed Charge')) {
+      currentBill = 10 * unitsConsumed;
+    } else if (selectedIssues.includes('Partial Waive Off - Tariff')) {
+      currentBill = 100;
+    } else {
+      currentBill = (10 * unitsConsumed) + 100;
+    }
     const totalDue = currentBill + pastDue;
     const balance = totalDue - amountPaid;
 
@@ -186,9 +216,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function updateFormBasedOnIssues() {
     const selectedIssues = Array.from(issueSelect.selectedOptions).map(opt => opt.value);
-    const hasIssue = selectedIssues.length > 0 && !selectedIssues.every(issue => issue === 'No Issue');
+    const isBillingVisible = selectedIssues.length === 0 || 
+                           selectedIssues.every(issue => 
+                             issue === 'No Issue' || 
+                             issue === 'Partial Waive Off - Fixed Charge' || 
+                             issue === 'Partial Waive Off - Tariff'
+                           );
 
-    if (hasIssue && mode !== 'readonly') {
+    if (!isBillingVisible && mode !== 'readonly') {
       billingSection.style.display = 'none';
       form.read_date.disabled = true;
       issueImgDiv.style.display = 'block';
@@ -203,6 +238,7 @@ document.addEventListener('DOMContentLoaded', () => {
   form.addEventListener('submit', function(e) {
     if (mode === 'readonly') return;
     e.preventDefault();
+    if (!validateMeterReading()) return;
     const formData = new FormData();
     const submission = {};
     for (const [key, value] of new FormData(form)) {
@@ -245,6 +281,7 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   draftBtn.addEventListener('click', function() {
+    if (!validateMeterReading()) return;
     const formData = new FormData();
     const draft = {};
     for (const [key, value] of new FormData(form)) {

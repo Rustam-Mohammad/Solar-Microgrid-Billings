@@ -32,6 +32,22 @@ document.addEventListener('DOMContentLoaded', () => {
       .catch(error => console.error('Error checking submission limit:', error));
   }
 
+  function validateMeterReading(showAlert = true) {
+    const selectedIssues = Array.from(form.individual_issues.selectedOptions).map(opt => opt.value);
+    if (selectedIssues.includes('Migrated') || selectedIssues.includes('Wave off')) {
+      return true; // Skip validation if no billing
+    }
+    const meterRead = parseFloat(form.meter_read.value) || 0;
+    const prevRead = parseFloat(form.prev_read.value) || 0;
+    if (form.meter_read.value && meterRead < prevRead) {
+      if (showAlert) {
+        alert('Current Meter Reading cannot be less than Previous Reading (' + prevRead + ').');
+      }
+      return false;
+    }
+    return true;
+  }
+
   function loadSubmission() {
     fetch(`/api/hh/${encodeURIComponent(customerId)}`)
       .then(res => res.json())
@@ -54,6 +70,7 @@ document.addEventListener('DOMContentLoaded', () => {
         Array.from(issueSelect.options).forEach(option => {
           option.selected = submission.individual_issues && submission.individual_issues.includes(option.value);
         });
+        updateBillingSection();
         if (submission.individual_issues && submission.individual_issues.length && !submission.individual_issues.includes('No Issue')) {
           document.getElementById('issueImgDiv').style.display = 'block';
         }
@@ -74,36 +91,61 @@ document.addEventListener('DOMContentLoaded', () => {
       });
   }
 
+  function updateBillingSection() {
+    const selectedIssues = Array.from(form.individual_issues.selectedOptions).map(opt => opt.value);
+    const billingSection = document.getElementById('billingSection');
+    if (selectedIssues.includes('Migrated') || selectedIssues.includes('Wave off')) {
+      billingSection.style.display = 'none';
+      form.meter_read.required = false;
+      form.amount_paid.required = false;
+    } else {
+      billingSection.style.display = 'block';
+      form.meter_read.required = true;
+      form.amount_paid.required = true;
+    }
+    calculateFields();
+  }
+
   function calculateFields() {
+    const selectedIssues = Array.from(form.individual_issues.selectedOptions).map(opt => opt.value);
     const meterRead = parseFloat(form.meter_read.value) || 0;
     const prevRead = parseFloat(form.prev_read.value) || 0;
-    const netConsumed = meterRead - prevRead;
-    form.net_consumed.value = netConsumed >= 0 ? netConsumed.toFixed(1) : '';
-    
-    const currentBill = netConsumed * 10 + 100;
+    const netConsumed = meterRead >= prevRead ? meterRead - prevRead : 0;
+    form.net_consumed.value = netConsumed.toFixed(1);
+
+    let currentBill = 0;
+    if (!selectedIssues.includes('Migrated') && !selectedIssues.includes('Wave off')) {
+      if (selectedIssues.includes('Partial Waive Off - Fixed Charge')) {
+        currentBill = netConsumed * 10;
+      } else if (selectedIssues.includes('Partial Waive Off - Tariff')) {
+        currentBill = 100;
+      } else {
+        currentBill = netConsumed * 10 + 100;
+      }
+    }
     form.current_bill.value = currentBill.toFixed(2);
-    
+
     const pastDue = parseFloat(form.past_due.value) || 0;
     const totalDue = currentBill + pastDue;
     form.total_due.value = totalDue.toFixed(2);
-    
+
     const amountPaid = parseFloat(form.amount_paid.value) || 0;
     form.amount_balance.value = (totalDue - amountPaid).toFixed(2);
   }
 
-  form.meter_read.addEventListener('input', calculateFields);
+  form.meter_read.addEventListener('blur', () => {
+    validateMeterReading();
+    calculateFields();
+  });
   form.prev_read.addEventListener('input', calculateFields);
   form.past_due.addEventListener('input', calculateFields);
   form.amount_paid.addEventListener('input', calculateFields);
   form.read_date.addEventListener('change', checkSubmissionLimit);
-
-  form.individual_issues.addEventListener('change', () => {
-    const selectedIssues = Array.from(form.individual_issues.selectedOptions).map(opt => opt.value);
-    document.getElementById('issueImgDiv').style.display = selectedIssues.length && !selectedIssues.includes('No Issue') ? 'block' : 'none';
-  });
+  form.individual_issues.addEventListener('change', updateBillingSection);
 
   form.addEventListener('submit', (e) => {
     e.preventDefault();
+    if (!validateMeterReading()) return;
     const formData = new FormData(form);
     const submission = {};
     formData.forEach((value, key) => {

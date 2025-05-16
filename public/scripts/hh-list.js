@@ -9,25 +9,25 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('hamlet').textContent = hamlet;
 
   fetch(`/api/hh-list?hamlet=${encodeURIComponent(hamlet)}`)
-    .then(response => response.json())
+    .then(response => {
+      if (!response.ok) throw new Error('Failed to fetch HH list: ' + response.status);
+      return response.json();
+    })
     .then(hhList => {
       const hhListDiv = document.getElementById('hhList');
-      if (hhListDiv) {
-        hhListDiv.innerHTML = '';
-        if (hhList.length === 0) {
-          hhListDiv.innerHTML = '<p>No households found.</p>';
-        } else {
-          hhList.forEach(hh => {
-            const div = document.createElement('div');
-            div.innerHTML = `
-              <input type="checkbox" value="${hh.customer_id}">
-              <button onclick="window.location.href='/hh-submissions.html?customer_id=${encodeURIComponent(hh.customer_id)}'">
-                ${hh.hh_name} (${hh.customer_id})
-              </button>
-            `;
-            hhListDiv.appendChild(div);
-          });
-        }
+      hhListDiv.innerHTML = '';
+      if (hhList.length === 0) {
+        hhListDiv.innerHTML = '<p>No households found.</p>';
+      } else {
+        hhList.forEach(hh => {
+          const button = document.createElement('button');
+          button.className = 'hh-button';
+          button.textContent = `${hh.hh_name} (${hh.customer_id})`;
+          button.onclick = () => {
+            window.location.href = `/hh-submissions.html?customer_id=${encodeURIComponent(hh.customer_id)}`;
+          };
+          hhListDiv.appendChild(button);
+        });
       }
     })
     .catch(error => {

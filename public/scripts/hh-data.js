@@ -1,24 +1,29 @@
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('HH Data: Script loaded');
   let allData = [];
   let filteredData = [];
   let allHamlets = [];
   let allMonths = [];
 
   function loadData() {
+    console.log('HH Data: Fetching /api/hh-list');
     fetch('/api/hh-list?all=true')
       .then(response => response.json())
       .then(data => {
         allData = data;
+        console.log('HH Data: Loaded', data.length, 'records');
         const tbody = document.querySelector('#hhTable tbody');
         const hamletLabel = document.getElementById('hamletLabel');
         const hamletDropdown = document.getElementById('hamletDropdown');
         const monthLabel = document.getElementById('monthLabel');
         const monthDropdown = document.getElementById('monthDropdown');
+        const clearFiltersBtn = document.getElementById('clearFiltersBtn');
 
         // Populate hamlet dropdown
         allHamlets = [...new Set(data.map(hh => hh.hamlet))];
         hamletDropdown.innerHTML = '<label><input type="checkbox" value="">All</label>' + 
           allHamlets.map(h => `<label><input type="checkbox" value="${h}">${h}</label>`).join('');
+        console.log('HH Data: Hamlets:', allHamlets);
 
         // Populate month dropdown
         allMonths = [...new Set(data.flatMap(hh => hh.submissions.map(sub => {
@@ -28,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }).filter(m => m)))];
         monthDropdown.innerHTML = '<label><input type="checkbox" value="">All</label>' + 
           allMonths.map(m => `<label><input type="checkbox" value="${m}">${m}</label>`).join('');
+        console.log('HH Data: Months:', allMonths);
 
         // Toggle dropdowns
         hamletLabel.addEventListener('click', () => toggleDropdown(hamletDropdown));
@@ -40,18 +46,29 @@ document.addEventListener('DOMContentLoaded', () => {
           });
         });
 
+        // Clear filters
+        clearFiltersBtn.addEventListener('click', () => {
+          console.log('HH Data: Clearing filters');
+          hamletDropdown.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+          monthDropdown.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+          hamletLabel.textContent = 'Hamlet';
+          monthLabel.textContent = 'Month';
+          filterAndRender();
+        });
+
         // Initial render
         filterAndRender();
 
         // CSV download
         document.getElementById('downloadCsvBtn').addEventListener('click', () => {
+          console.log('HH Data: Downloading CSV');
           const selectedHamlets = Array.from(hamletDropdown.querySelectorAll('input:checked')).map(cb => cb.value).filter(v => v);
           const selectedMonths = Array.from(monthDropdown.querySelectorAll('input:checked')).map(cb => cb.value).filter(v => v);
           const csv = [
-            'Customer ID,HH Name,Date,Meter Reading,Units Consumed,Current Bill,Past Due,Total Due,Amount Paid,Balance,VEC,Hamlet,Village,GP,Block,District,Meter Reading Image,Individual Issue',
+            'Customer ID,HH Name,Date of Reading,Hamlet,Village,GP,Block,District,VEC Name,Bill Number,Individual Issue,Current Meter Reading,Meter Reading Image,Previous Month Reading,Units Consumed,Current Month Bill,Past Dues,Total Bill Due,Amount Paid,Balance',
             ...filteredData.map(sub => {
               const hh = sub.hh;
-              return `${hh.customer_id},${hh.hh_name},${sub.read_date || ''},${sub.meter_read || ''},${sub.net_consumed || ''},${sub.current_bill || ''},${sub.past_due || ''},${sub.total_due || ''},${sub.amount_paid || ''},${sub.amount_balance || ''},${hh.vec_name || ''},${hh.hamlet || ''},${hh.village || ''},${hh.gp || ''},${hh.block || ''},${hh.district || ''},${sub.meter_image ? '/uploads/' + sub.meter_image : ''},${sub.individual_issues ? sub.individual_issues.join(';') : ''}`;
+              return `${hh.customer_id || ''},${hh.hh_name || ''},${sub.read_date || ''},${hh.hamlet || ''},${hh.village || ''},${hh.gp || ''},${hh.block || ''},${hh.district || ''},${hh.vec_name || ''},${sub.bill_id || ''},${sub.individual_issues ? sub.individual_issues.join(',') : ''},${sub.meter_read || ''},${sub.meter_image ? '/Uploads/' + sub.meter_image : ''},${sub.prev_read || ''},${sub.net_consumed || ''},${sub.current_bill || ''},${sub.past_due || ''},${sub.total_due || ''},${sub.amount_paid || ''},${sub.amount_balance || ''}`;
             })
           ].join('\n');
           const blob = new Blob([csv], { type: 'text/csv' });
@@ -64,7 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, { once: true });
       })
       .catch(error => {
-        console.error('Error fetching HH data:', error);
+        console.error('HH Data: Error fetching data:', error);
         alert('Error loading HH data');
       });
   }
@@ -74,6 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function filterAndRender() {
+    console.log('HH Data: Filtering and rendering');
     const hamletDropdown = document.getElementById('hamletDropdown');
     const monthDropdown = document.getElementById('monthDropdown');
     const selectedHamlets = Array.from(hamletDropdown.querySelectorAll('input:checked')).map(cb => cb.value).filter(v => v);
@@ -92,24 +110,29 @@ document.addEventListener('DOMContentLoaded', () => {
       const hh = sub.hh;
       const row = document.createElement('tr');
       row.innerHTML = `
-        <td>${hh.customer_id}</td>
-        <td>${hh.hh_name}</td>
+        <td>${hh.state || 'N/A'}</td>
+        <td>${hh.district || 'N/A'}</td>
+        <td>${hh.block || 'N/A'}</td>
+        <td>${hh.gp || 'N/A'}</td>
+        <td>${hh.village || 'N/A'}</td>
+        <td>${hh.hamlet || 'N/A'}</td>
+        <td>${hh.vec_name || 'N/A'}</td>
+        <td>${hh.micro_id || 'N/A'}</td>
+        <td>${hh.hh_name || 'N/A'}</td>
+        <td>${hh.meter_num || 'N/A'}</td>
+        <td>${hh.customer_id || 'N/A'}</td>
+        <td>${hh.cust_gender || 'N/A'}</td>
         <td>${sub.read_date || 'N/A'}</td>
+        <td>${sub.individual_issues ? sub.individual_issues.join(', ') : 'N/A'}</td>
+        <td>${sub.bill_id || 'N/A'}</td>
         <td>${sub.meter_read || 'N/A'}</td>
+        <td>${sub.prev_read || 'N/A'}</td>
         <td>${sub.net_consumed || 'N/A'}</td>
         <td>${sub.current_bill || 'N/A'}</td>
-        <td>${sub.past_due || 'N/A'}</td>
-        <td>${sub.total_due || 'N/A'}</td>
-        <td>${sub.amount_paid || 'N/A'}</td>
-        <td>${sub.amount_balance || 'N/A'}</td>
-        <td>${hh.vec_name || 'N/A'}</td>
-        <td>${hh.hamlet || 'N/A'}</td>
-        <td>${hh.village || 'N/A'}</td>
-        <td>${hh.gp || 'N/A'}</td>
-        <td>${hh.block || 'N/A'}</td>
-        <td>${hh.district || 'N/A'}</td>
-        <td>${sub.meter_image ? `<img src="/uploads/${sub.meter_image}" alt="Meter Reading" onclick="window.open('/uploads/${sub.meter_image}', '_blank')">` : 'N/A'}</td>
-        <td>${sub.individual_issues ? sub.individual_issues.join(', ') : 'N/A'}</td>
+        <td>${sub.past_due || '0'}</td>
+        <td>${sub.total_due || '0'}</td>
+        <td>${sub.amount_paid || '0'}</td>
+        <td>${sub.amount_balance || '0'}</td>
       `;
       tbody.appendChild(row);
     });
@@ -119,10 +142,12 @@ document.addEventListener('DOMContentLoaded', () => {
   loadData();
 
   document.getElementById('backBtn').addEventListener('click', () => {
+    console.log('HH Data: Back to spoc-dashboard');
     window.location.href = '/spoc-dashboard.html';
   });
 
   document.getElementById('logoutBtn').addEventListener('click', () => {
+    console.log('HH Data: Logout clicked');
     localStorage.clear();
     window.location.href = '/index.html';
   });

@@ -7,6 +7,17 @@ document.addEventListener('DOMContentLoaded', () => {
   const issueSelect = form.querySelector('[name="general_issues"]');
   const issueImgDiv = document.getElementById('issueImgDiv');
   const submitBtn = form.querySelector('button[type="submit"]');
+  const saveDraftBtn = document.getElementById('saveDraftBtn');
+  const backBtn = document.getElementById('backBtn');
+  const totalMonthlyMeterReadingHHInput = form.querySelector('#totalMonthlyMeterReadingHH');
+  const totalMeterReadingGridInput = form.querySelector('#totalMeterReadingGrid');
+  const totalMeterReadingGridError = document.getElementById('totalMeterReadingGridError');
+
+  // Set hamlet name in heading
+  const hamletSpan = document.getElementById('hamlet');
+  if (hamletSpan && hamlet) {
+    hamletSpan.textContent = hamlet.charAt(0).toUpperCase() + hamlet.slice(1);
+  }
 
   form.submission_date.value = new Date().toISOString().split('T')[0];
 
@@ -21,19 +32,28 @@ document.addEventListener('DOMContentLoaded', () => {
             .then(data => ({ submissions: data.submissions || [], hamlet: data.hamlet }))
         );
         Promise.all(hhSubmissions).then(allSubs => {
-          const totalCollected = allSubs
-            .filter(hh => hh.hamlet.toLowerCase() === hamlet.toLowerCase())
+          const filteredSubs = allSubs.filter(hh => hh.hamlet && hh.hamlet.toLowerCase() === hamlet.toLowerCase());
+          const totalCollected = filteredSubs
             .flatMap(hh => hh.submissions)
             .filter(sub => sub.read_date && sub.read_date.slice(0, 7) === currentMonth)
             .reduce((sum, sub) => sum + (parseFloat(sub.amount_paid) || 0), 0);
           form.amount_collected.value = totalCollected.toFixed(2);
           form.amount_collected.readOnly = true;
+
+          // Calculate Total Monthly Meter Reading-HH
+          const totalMeterReadingHH = filteredSubs
+            .flatMap(hh => hh.submissions)
+            .filter(sub => sub.read_date && sub.read_date.slice(0, 7) === currentMonth)
+            .reduce((sum, sub) => sum + (parseFloat(sub.meter_read) || 0), 0);
+          totalMonthlyMeterReadingHHInput.value = totalMeterReadingHH.toFixed(2);
+
           updateCalculations();
         });
       })
       .catch(error => {
         console.error('Error fetching HH data:', error);
         form.amount_collected.value = '0.00';
+        totalMonthlyMeterReadingHHInput.value = '0.00';
       });
   }
 
@@ -48,9 +68,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const hasSubmission = submissions.some(sub => sub.submission_date && sub.submission_date.slice(0, 7) === submissionMonth);
         if (hasSubmission && mode !== 'readonly' && (submissionIndex === null || parseInt(submissionIndex) !== submissions.findIndex(sub => sub.submission_date && sub.submission_date.slice(0, 7) === submissionMonth))) {
           submitBtn.disabled = true;
+          saveDraftBtn.disabled = true;
           alert('A submission for this month already exists.');
         } else {
           submitBtn.disabled = false;
+          saveDraftBtn.disabled = false;
         }
       })
       .catch(error => console.error('Error checking submission limit:', error));
@@ -59,15 +81,35 @@ document.addEventListener('DOMContentLoaded', () => {
   fetch('/api/vec/' + encodeURIComponent(hamlet))
     .then(response => response.json())
     .then(data => {
+      if (!data) {
+        alert('Error loading VEC data: No data received');
+        return;
+      }
       const submissions = data.submissions || [];
       const lastSubmission = submissions[submissions.length - 1] || {};
 
-      if (mode === 'readonly' && submissionIndex !== null) {
-        const submission = submissions[parseInt(submissionIndex)];
-        if (!submission) throw new Error('Submission not found');
+      if (mode === 'readonly') {
+        console.log('Readonly mode with submissionIndex:', submissionIndex);
+        const idx = parseInt(submissionIndex);
+        if (isNaN(idx) || idx < 0 || idx >= submissions.length) {
+          alert('Submission not found or invalid index');
+          return;
+        }
+        const submission = submissions[idx];
+        console.log('Submission to populate:', submission);
         populateForm(submission);
+
+        // Set meter reading fields readonly or disabled in readonly mode
+        form.totalMonthlyMeterReadingHH.readOnly = true;
+        form.totalMeterReadingGrid.readOnly = true;
+
         makeFormReadOnly();
       } else {
+        form.state.value = data.state || '';
+        form.district.value = data.district || '';
+        form.block.value = data.block || '';
+        form.gp.value = data.gp || '';
+        form.village.value = data.village || '';
         form.hamlet.value = hamlet;
         form.vec_name.value = data.vec_name || 'Prakash Saur Oorja Samiti';
         form.micro_id.value = data.microgrid_id || 'MG-SARAIPANI';
@@ -80,8 +122,10 @@ document.addEventListener('DOMContentLoaded', () => {
           form.total_saving.readOnly = true;
         }
 
-        updateAmountCollected();
-        checkSubmissionLimit();
+        if (mode !== 'readonly') {
+          updateAmountCollected();
+          checkSubmissionLimit();
+        }
       }
     })
     .catch(error => {
@@ -90,8 +134,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
   form.submission_date.addEventListener('change', () => {
-    updateAmountCollected();
-    checkSubmissionLimit();
+    if (mode !== 'readonly') {
+      updateAmountCollected();
+      checkSubmissionLimit();
+    }
   });
 
   issueSelect.addEventListener('change', function() {
@@ -121,6 +167,15 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function populateForm(submission) {
+    form.state.value = submission.state || '';
+    form.district.value = submission.district || '';
+    form.block.value = submission.block || '';
+    form.gp.value = submission.gp || '';
+    form.village.value = submission.village || '';
+    form.hamlet.value = submission.hamlet || '';
+    form.vec_name.value = submission.vec_name || '';
+    form.micro_id.value = submission.micro_id || '';
+
     form.submission_date.value = submission.submission_date || '';
     form.amount_collected.value = submission.amount_collected || '';
     form.expenditure.value = submission.expenditure || '';
@@ -128,6 +183,11 @@ document.addEventListener('DOMContentLoaded', () => {
     form.total_saving.value = submission.total_saving || '';
     form.amount_bank.value = submission.amount_bank || '';
     form.amount_hand.value = submission.amount_hand || '';
+
+    // Populate meter reading fields if present
+    form.totalMonthlyMeterReadingHH.value = submission.total_monthly_meter_reading_hh || '';
+    form.totalMeterReadingGrid.value = submission.total_meter_reading_grid || '';
+
     let issues = submission.general_issues;
     if (typeof issues === 'string') issues = issues.split(',');
     else if (!Array.isArray(issues)) issues = issues ? [issues] : ['No Issue'];
@@ -142,34 +202,104 @@ document.addEventListener('DOMContentLoaded', () => {
       if (element.tagName !== 'BUTTON') element.disabled = true;
     });
     submitBtn.style.display = 'none';
+    saveDraftBtn.style.display = 'none';
   }
 
-  form.addEventListener('submit', function(e) {
-    if (mode === 'readonly') return;
-    e.preventDefault();
+  saveDraftBtn.addEventListener('click', () => {
+    if (!form.submission_date.value) {
+      alert('Please enter a submission date before saving draft.');
+      return;
+    }
     const formData = new FormData();
-    const submission = {};
+    const draft = {};
     for (const [key, value] of new FormData(form)) {
       if (key === 'general_issues') {
-        submission[key] = Array.from(form.general_issues.selectedOptions).map(opt => opt.value);
+        draft[key] = Array.from(form.general_issues.selectedOptions).map(opt => opt.value);
       } else if (key !== 'issue_img') {
-        submission[key] = value;
+        draft[key] = value;
       }
     }
-    formData.append('submission', JSON.stringify(submission));
-    if (form.issue_img.files[0]) formData.append('issue_img', form.issue_img.files[0]);
-
-    fetch('/api/vec/' + encodeURIComponent(hamlet) + '/submit', {
+    formData.append('draft', JSON.stringify(draft));
+    if (form.issue_img.files[0]) {
+      formData.append('issue_img', form.issue_img.files[0]);
+    }
+    fetch(`/api/vec/${encodeURIComponent(hamlet)}/draft`, {
       method: 'POST',
       body: formData
     })
       .then(response => {
-        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+        if (!response.ok) {
+          return response.text().then(text => {
+            throw new Error(`HTTP error! Status: ${response.status}, Body: ${text}`);
+          });
+        }
         return response.json();
       })
       .then(data => {
         if (data.success) {
-          window.location.href = '/vec.html';
+          alert('Draft saved successfully.');
+          window.location.href = `/vec-submissions.html?hamlet=${encodeURIComponent(hamlet)}`;
+        } else {
+          alert('Draft save failed: ' + (data.error || 'Unknown error'));
+        }
+      })
+      .catch(error => {
+        alert('Error saving draft: ' + error.message);
+      });
+  });
+
+  backBtn.addEventListener('click', () => {
+    window.location.href = `/vec-submissions.html?hamlet=${encodeURIComponent(hamlet)}`;
+  });
+
+  // Add submit event listener to prevent default form submission and handle via JS
+  form.addEventListener('submit', (event) => {
+    event.preventDefault();
+
+    if (!form.submission_date.value) {
+      alert('Please enter a submission date before submitting.');
+      return;
+    }
+
+    // Serialize form fields except file inputs into JSON object
+    const submissionObj = {};
+    for (const [key, value] of new FormData(form)) {
+      if (key !== 'issue_img') {
+        if (key === 'general_issues') {
+          // Handle multiple select for general_issues
+          if (!submissionObj[key]) submissionObj[key] = [];
+          submissionObj[key].push(value);
+        } else {
+          submissionObj[key] = value;
+        }
+      }
+    }
+
+    // Create FormData to send
+    const formData = new FormData();
+    formData.append('submission', JSON.stringify(submissionObj));
+
+    // Append file if present
+    if (form.issue_img.files[0]) {
+      formData.append('issue_img', form.issue_img.files[0]);
+    }
+
+    fetch(`/api/vec/${encodeURIComponent(hamlet)}/submit`, {
+      method: 'POST',
+      body: formData
+    })
+      .then(response => {
+        if (!response.ok) {
+          return response.text().then(text => {
+            throw new Error(`HTTP error! Status: ${response.status}, Body: ${text}`);
+          });
+        }
+        return response.json();
+      })
+      .then(data => {
+        if (data.success) {
+          alert('Submission successful.');
+          window.location.href = `/vec-submissions.html?hamlet=${encodeURIComponent(hamlet)}`;
         } else {
           alert('Submission failed: ' + (data.error || 'Unknown error'));
         }
@@ -177,9 +307,5 @@ document.addEventListener('DOMContentLoaded', () => {
       .catch(error => {
         alert('Error submitting form: ' + error.message);
       });
-  });
-
-  document.getElementById('backBtn').addEventListener('click', () => {
-    window.location.href = `/vec-submissions.html?hamlet=${encodeURIComponent(hamlet)}`;
   });
 });

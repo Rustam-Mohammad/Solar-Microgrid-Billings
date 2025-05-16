@@ -2,15 +2,27 @@
 <html>
 <head>
   <title>VEC Submissions</title>
-  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/styles.css?v=11">
+  <link href="https://fonts.googleapis.com/css2?family=Segoe UI:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
-  <h1>VEC Submissions for <span id="hamlet"></span></h1>
-  <button id="newEntryBtn">New Entry</button>
-  <button id="removeVecBtn">Remove This VEC</button>
-  <div id="submissions"></div>
-  <button id="backBtn">Back</button>
-  <button id="logoutBtn">Logout</button>
+  <div class="dashboard-container">
+    <header class="dashboard-header">
+      <div class="header-content">
+        <h1>Solar Microgrid Project</h1>
+        <p class="page-title">VEC Submissions</p>
+      </div>
+      <button id="logoutBtn" class="logout-btn">Logout</button>
+    </header>
+    <div class="vec-submissions-container" data-hamlet="">
+      <h2>VEC Submissions for <span id="hamlet"></span></h2>
+      <div id="submissions" class="submissions-list"></div>
+      <div class="button-container">
+        <button id="newEntryBtn" class="dashboard-btn">New Entry</button>
+        <button id="backBtn" class="dashboard-btn back-btn">Back</button>
+      </div>
+    </div>
+  </div>
   <script src="/scripts/vec-submissions.js"></script>
 </body>
 </html>

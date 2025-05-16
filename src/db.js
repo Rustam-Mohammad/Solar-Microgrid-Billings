@@ -26,6 +26,12 @@ db.serialize(() => {
       if (err) console.error('Error inserting SPOC:', err);
       else console.log('Inserted SPOC: saraipani_spoc|spocpass456|spoc|null');
     });
+  // Insert universal IC Dashboard user
+  db.run(`INSERT OR IGNORE INTO users (username, password, role, hamlet) VALUES (?, ?, ?, ?)`, 
+    ['ic_operator', 'icpassword123', 'ic-operator', null], (err) => {
+      if (err) console.error('Error inserting IC operator:', err);
+      else console.log('Inserted IC operator: ic_operator|icpassword123|ic-operator|null');
+    });
 
   db.run(`CREATE TABLE IF NOT EXISTS hh (
     customer_id TEXT PRIMARY KEY,
@@ -74,13 +80,14 @@ db.serialize(() => {
     gp TEXT,
     village TEXT,
     microgrid_id TEXT,
-    submissions TEXT
+    submissions TEXT,
+    drafts TEXT
   )`, (err) => {
     if (err) console.error('Error creating vec table:', err);
     else console.log('VEC table created or exists');
   });
-  db.run(`INSERT OR IGNORE INTO vec (hamlet, vec_name, state, district, block, gp, village, microgrid_id, submissions) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, 
-    ['Saraipani', 'Prakash Saur Oorja Samiti', 'Jharkhand', 'Dumka', 'Kurdeg', 'Barkibiura', 'Saraipani', 'MG-SARAIPANI', '[]'], (err) => {
+  db.run(`INSERT OR IGNORE INTO vec (hamlet, vec_name, state, district, block, gp, village, microgrid_id, submissions, drafts) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, 
+    ['Saraipani', 'Prakash Saur Oorja Samiti', 'Jharkhand', 'Dumka', 'Kurdeg', 'Barkibiura', 'Saraipani', 'MG-SARAIPANI', '[]', '[]'], (err) => {
       if (err) console.error('Error inserting VEC Saraipani:', err);
       else console.log('Inserted VEC: Saraipani');
     });

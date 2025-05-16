@@ -2,20 +2,88 @@ const express = require('express');
 const router = express.Router();
 const db = require('./db');
 const multer = require('multer');
-const upload = multer({ dest: 'uploads/' });
-const csv = require('csv-parser');
+const path = require('path');
 const fs = require('fs');
+const csv = require('csv-parser');
 
+// Export the router at the end of the file
+module.exports = router;
+
+// Configure multer with unique filenames
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const dir = 'Uploads/';
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    cb(null, dir);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    cb(null, `${file.fieldname}-${Date.now()}${ext}`);
+  }
+});
+const upload = multer({ storage });
+
+// Serve static files like hamlets.csv
+router.get('/data/hamlets.csv', (req, res) => {
+  const filePath = path.join(__dirname, 'hamlets.csv');
+  res.sendFile(filePath, (err) => {
+    if (err) {
+      console.error('Error serving hamlets.csv:', err);
+      res.status(500).json({ error: 'Failed to load hamlets.csv' });
+    }
+  });
+});
+
+// Initialize database schema
+db.serialize(() => {
+  // ... existing tables ...
+
+  // Create insurance claims table
+  db.run(`
+    CREATE TABLE IF NOT EXISTS insurance_claims (
+      hamlet TEXT,
+      state TEXT,
+      district TEXT,
+      block TEXT,
+      gp TEXT,
+      village TEXT,
+      vec_name TEXT,
+      microgrid_id TEXT,
+      claim_ref_number TEXT,
+      submissions TEXT,
+      drafts TEXT,
+      PRIMARY KEY (hamlet, claim_ref_number)
+    )
+  `);
+
+  // Create insurance_premium_submissions table (optimized to store per hamlet)
+  db.run(`
+    CREATE TABLE IF NOT EXISTS insurance_premium_submissions (
+      hamlet TEXT PRIMARY KEY,
+      state TEXT,
+      district TEXT,
+      block TEXT,
+      gp TEXT,
+      village TEXT,
+      vec_name TEXT,
+      microgrid_id TEXT,
+      submissions TEXT DEFAULT '[]',
+      drafts TEXT DEFAULT '[]'
+    )
+  `);
+});
+
+// Login route
 router.post('/api/login', (req, res) => {
   const { username, password } = req.body;
-  console.log('Login attempt:', { username, password });
-
+  console.log('Login attempt:', { username });
   db.get(`SELECT * FROM users WHERE username = ? AND password = ?`, [username, password], (err, row) => {
     if (err) {
-      console.error('Database error:', err);
+      console.error('Database error:', err.message);
       return res.status(500).json({ success: false, error: 'Database error' });
     }
-    console.log('Database row:', row);
     if (!row) {
       console.log('No matching user found');
       return res.json({ success: false, error: 'Invalid username or password' });
@@ -25,16 +93,17 @@ router.post('/api/login', (req, res) => {
   });
 });
 
+// Get HH list
 router.get('/api/hh-list', (req, res) => {
   const hamlet = req.query.hamlet;
   const all = req.query.all === 'true';
-  console.log('Fetching HH list for hamlet:', hamlet, 'all:', all);
+  console.log('Fetching HH list:', { hamlet, all });
   const query = all
     ? (hamlet ? 'SELECT * FROM hh WHERE lower(hamlet) = lower(?)' : 'SELECT * FROM hh')
     : (hamlet ? 'SELECT customer_id, hh_name FROM hh WHERE lower(hamlet) = lower(?)' : 'SELECT customer_id, hh_name FROM hh');
   db.all(query, hamlet ? [hamlet] : [], (err, rows) => {
     if (err) {
-      console.error('Error fetching HH list:', err);
+      console.error('Error fetching HH list:', err.message);
       return res.status(500).json({ error: 'Database error' });
     }
     rows.forEach(row => {
@@ -43,106 +112,138 @@ router.get('/api/hh-list', (req, res) => {
         row.drafts = JSON.parse(row.drafts || '[]');
       }
     });
-    console.log('HH list:', rows);
     res.json(rows);
   });
 });
 
+// Get VEC list
 router.get('/api/vec-list', (req, res) => {
   const hamlet = req.query.hamlet;
-  console.log('Fetching VEC list for hamlet:', hamlet);
+  console.log('Fetching VEC list:', { hamlet });
   const query = hamlet ? 'SELECT * FROM vec WHERE lower(hamlet) = lower(?)' : 'SELECT * FROM vec';
   db.all(query, hamlet ? [hamlet] : [], (err, rows) => {
     if (err) {
-      console.error('Error fetching VEC list:', err);
+      console.error('Error fetching VEC list:', err.message);
       return res.status(500).json({ error: 'Database error' });
     }
     rows.forEach(row => {
       row.submissions = JSON.parse(row.submissions || '[]');
+      row.drafts = JSON.parse(row.drafts || '[]');
     });
-    console.log('VEC list:', rows);
     res.json(rows);
   });
 });
 
+// Get HH by customer_id
 router.get('/api/hh/:customer_id', (req, res) => {
   const { customer_id } = req.params;
+  console.log('GET /api/hh/:customer_id:', customer_id);
   db.get('SELECT * FROM hh WHERE customer_id = ?', [customer_id], (err, row) => {
     if (err) {
-      console.error('Error fetching HH:', err);
+      console.error('Error fetching HH:', err.message);
       return res.status(500).json({ error: 'Database error' });
     }
     if (!row) {
       console.log('Household not found:', customer_id);
       return res.status(404).json({ error: 'Household not found' });
     }
-    console.log('Raw HH Row:', row);
     row.submissions = JSON.parse(row.submissions || '[]');
     row.drafts = JSON.parse(row.drafts || '[]');
     res.json(row);
   });
 });
 
+// Save HH draft
 router.post('/api/hh/:customer_id/draft', upload.fields([{ name: 'issue_img' }, { name: 'meter_image' }]), (req, res) => {
   const { customer_id } = req.params;
-  const draft = JSON.parse(req.body.draft || '{}');
+  console.log('POST /api/hh/:customer_id/draft:', { customer_id, body: req.body, files: req.files });
+  let draft;
+  try {
+    draft = JSON.parse(req.body.draft || '{}');
+  } catch (e) {
+    console.error('Error parsing draft JSON:', e.message);
+    return res.status(400).json({ error: 'Invalid draft data' });
+  }
   db.get('SELECT drafts FROM hh WHERE customer_id = ?', [customer_id], (err, row) => {
     if (err) {
-      console.error('Error fetching HH for draft:', err);
+      console.error('Error fetching HH for draft:', err.message);
       return res.status(500).json({ error: 'Database error' });
     }
-    if (!row) return res.status(404).json({ error: 'Household not found' });
-    const drafts = JSON.parse(row.drafts || '[]');
-    drafts.push(draft);
+    if (!row) {
+      console.log('Household not found:', customer_id);
+      return res.status(404).json({ error: 'Household not found' });
+    }
+    let drafts = JSON.parse(row.drafts || '[]');
+    const draftData = {
+      ...draft,
+      issue_img: req.files['issue_img'] ? `/Uploads/${req.files['issue_img'][0].filename}` : null,
+      meter_image: req.files['meter_image'] ? `/Uploads/${req.files['meter_image'][0].filename}` : null
+    };
+    drafts.push(draftData);
     db.run('UPDATE hh SET drafts = ? WHERE customer_id = ?', [JSON.stringify(drafts), customer_id], (err) => {
       if (err) {
-        console.error('Error saving draft:', err);
+        console.error('Error saving HH draft:', err.message);
         return res.status(500).json({ error: 'Database update error' });
       }
-      console.log('Draft saved:', customer_id);
+      console.log('HH draft saved:', customer_id);
       res.json({ success: true });
     });
   });
 });
 
+// Submit HH submission
 router.post('/api/hh/:customer_id/submit', upload.fields([{ name: 'issue_img' }, { name: 'meter_image' }]), (req, res) => {
   const { customer_id } = req.params;
+  console.log('POST /api/hh/:customer_id/submit:', { customer_id, body: req.body });
   const draftIndex = req.query.draft;
-  const submission = JSON.parse(req.body.submission || '{}');
+  let submission;
+  try {
+    submission = JSON.parse(req.body.submission || '{}');
+  } catch (e) {
+    console.error('Error parsing submission JSON:', e.message);
+    return res.status(400).json({ error: 'Invalid submission data' });
+  }
   db.get('SELECT submissions, drafts FROM hh WHERE customer_id = ?', [customer_id], (err, row) => {
     if (err) {
-      console.error('Error fetching HH for submit:', err);
+      console.error('Error fetching HH for submit:', err.message);
       return res.status(500).json({ error: 'Database error' });
     }
-    if (!row) return res.status(404).json({ error: 'Household not found' });
-    const submissions = JSON.parse(row.submissions || '[]');
-    const drafts = JSON.parse(row.drafts || '[]');
+    if (!row) {
+      console.log('Household not found:', customer_id);
+      return res.status(404).json({ error: 'Household not found' });
+    }
+    let submissions = JSON.parse(row.submissions || '[]');
+    let drafts = JSON.parse(row.drafts || '[]');
     const submissionMonth = submission.read_date ? submission.read_date.slice(0, 7) : null;
     if (submissionMonth && submissions.some(sub => sub.read_date && sub.read_date.slice(0, 7) === submissionMonth)) {
       return res.status(400).json({ error: 'A submission for this month already exists' });
     }
+    const submissionData = {
+      ...submission,
+      issue_img: req.files['issue_img'] ? `/Uploads/${req.files['issue_img'][0].filename}` : null,
+      meter_image: req.files['meter_image'] ? `/Uploads/${req.files['meter_image'][0].filename}` : null
+    };
     if (draftIndex !== undefined) {
       const idx = parseInt(draftIndex);
       if (idx >= 0 && idx < drafts.length) {
-        submissions.push(submission);
+        submissions.push(submissionData);
         drafts.splice(idx, 1);
-        db.run('UPDATE hh SET submissions = ?, drafts = ? WHERE customer_id = ?', 
-          [JSON.stringify(submissions), JSON.stringify(drafts), customer_id], (err) => {
-            if (err) {
-              console.error('Error updating HH submissions:', err);
-              return res.status(500).json({ error: 'Database update error' });
-            }
-            console.log('HH submission updated from draft:', customer_id);
-            res.json({ success: true });
-          });
+        db.run('UPDATE hh SET submissions = ?, drafts = ? WHERE customer_id = ?', [JSON.stringify(submissions), JSON.stringify(drafts), customer_id], (err) => {
+          if (err) {
+            console.error('Error updating HH submissions:', err.message);
+            return res.status(500).json({ error: 'Database update error' });
+          }
+          console.log('HH submission updated from draft:', customer_id);
+          res.json({ success: true });
+        });
       } else {
         return res.status(400).json({ error: 'Invalid draft index' });
       }
     } else {
-      submissions.push(submission);
+      submissions.push(submissionData);
       db.run('UPDATE hh SET submissions = ? WHERE customer_id = ?', [JSON.stringify(submissions), customer_id], (err) => {
         if (err) {
-          console.error('Error updating HH submissions:', err);
+          console.error('Error updating HH submissions:', err.message);
           return res.status(500).json({ error: 'Database update error' });
         }
         console.log('HH submission updated:', customer_id);
@@ -152,41 +253,58 @@ router.post('/api/hh/:customer_id/submit', upload.fields([{ name: 'issue_img' },
   });
 });
 
+// Get VEC by hamlet
 router.get('/api/vec/:hamlet', (req, res) => {
   const { hamlet } = req.params;
-  db.get('SELECT * FROM vec WHERE hamlet = ?', [hamlet], (err, row) => {
+  console.log('GET /api/vec/:hamlet:', hamlet);
+  db.get('SELECT * FROM vec WHERE lower(hamlet) = lower(?)', [hamlet], (err, row) => {
     if (err) {
-      console.error('Error fetching VEC:', err);
+      console.error('Error fetching VEC:', err.message);
+      return res.status(500).json({ error: 'Database error', details: err.message });
+    }
+    if (!row) {
+      console.log('VEC not found:', hamlet);
+      return res.status(404).json({ error: 'VEC not found' });
+    }
+    row.submissions = JSON.parse(row.submissions || '[]');
+    row.drafts = JSON.parse(row.drafts || '[]');
+    res.json(row);
+  });
+});
+
+// Submit VEC submission
+router.post('/api/vec/:hamlet/submit', upload.single('issue_img'), (req, res) => {
+  const { hamlet } = req.params;
+  console.log('POST /api/vec/:hamlet/submit:', { hamlet, body: req.body });
+  let submission;
+  try {
+    submission = JSON.parse(req.body.submission || '{}');
+  } catch (e) {
+    console.error('Error parsing submission JSON:', e.message);
+    return res.status(400).json({ error: 'Invalid submission data' });
+  }
+  db.get('SELECT submissions FROM vec WHERE lower(hamlet) = lower(?)', [hamlet], (err, row) => {
+    if (err) {
+      console.error('Error fetching VEC for submit:', err.message);
       return res.status(500).json({ error: 'Database error' });
     }
     if (!row) {
       console.log('VEC not found:', hamlet);
       return res.status(404).json({ error: 'VEC not found' });
     }
-    console.log('Raw VEC Row:', row);
-    row.submissions = JSON.parse(row.submissions || '[]');
-    res.json(row);
-  });
-});
-
-router.post('/api/vec/:hamlet/submit', upload.single('issue_img'), (req, res) => {
-  const { hamlet } = req.params;
-  const submission = JSON.parse(req.body.submission || '{}');
-  db.get('SELECT submissions FROM vec WHERE hamlet = ?', [hamlet], (err, row) => {
-    if (err) {
-      console.error('Error fetching VEC for submit:', err);
-      return res.status(500).json({ error: 'Database error' });
-    }
-    if (!row) return res.status(404).json({ error: 'VEC not found' });
-    const submissions = JSON.parse(row.submissions || '[]');
+    let submissions = JSON.parse(row.submissions || '[]');
     const submissionMonth = submission.submission_date ? submission.submission_date.slice(0, 7) : null;
     if (submissionMonth && submissions.some(sub => sub.submission_date && sub.submission_date.slice(0, 7) === submissionMonth)) {
       return res.status(400).json({ error: 'A submission for this month already exists' });
     }
-    submissions.push(submission);
-    db.run('UPDATE vec SET submissions = ? WHERE hamlet = ?', [JSON.stringify(submissions), hamlet], (err) => {
+    const submissionData = {
+      ...submission,
+      issue_img: req.file ? `/Uploads/${req.file.filename}` : null
+    };
+    submissions.push(submissionData);
+    db.run('UPDATE vec SET submissions = ? WHERE lower(hamlet) = lower(?)', [JSON.stringify(submissions), hamlet], (err) => {
       if (err) {
-        console.error('Error updating VEC submissions:', err);
+        console.error('Error updating VEC submissions:', err.message);
         return res.status(500).json({ error: 'Database update error' });
       }
       console.log('VEC submission updated:', hamlet);
@@ -195,16 +313,66 @@ router.post('/api/vec/:hamlet/submit', upload.single('issue_img'), (req, res) =>
   });
 });
 
+// Save VEC draft
+router.post('/api/vec/:hamlet/draft', upload.single('issue_img'), (req, res) => {
+  const { hamlet } = req.params;
+  console.log('POST /api/vec/:hamlet/draft:', { hamlet, body: req.body, file: req.file });
+  let draft;
+  try {
+    draft = JSON.parse(req.body.draft || '{}');
+    console.log('Parsed draft:', draft);
+  } catch (e) {
+    console.error('Error parsing draft JSON:', e.message);
+    return res.status(400).json({ error: 'Invalid draft data', details: e.message });
+  }
+  db.get('SELECT drafts FROM vec WHERE lower(hamlet) = lower(?)', [hamlet], (err, row) => {
+    if (err) {
+      console.error('Database error fetching VEC:', { hamlet, error: err.message, code: err.code });
+      return res.status(500).json({ error: 'Database error', details: err.message });
+    }
+    if (!row) {
+      console.error('VEC not found:', hamlet);
+      return res.status(404).json({ error: 'VEC not found' });
+    }
+    console.log('VEC row:', { hamlet, drafts: row.drafts });
+    let drafts;
+    try {
+      drafts = JSON.parse(row.drafts || '[]');
+    } catch (e) {
+      console.error('Error parsing existing drafts:', e.message);
+      drafts = [];
+    }
+    const draftData = {
+      ...draft,
+      issue_img: req.file ? `/Uploads/${req.file.filename}` : null
+    };
+    drafts.push(draftData);
+    db.run('UPDATE vec SET drafts = ? WHERE lower(hamlet) = lower(?)', [JSON.stringify(drafts), hamlet], (err) => {
+      if (err) {
+        console.error('Error saving VEC draft:', { hamlet, error: err.message, code: err.code });
+        return res.status(500).json({ error: 'Database update error', details: err.message });
+      }
+      console.log('Draft saved successfully:', { hamlet, draftsLength: drafts.length });
+      res.json({ success: true });
+    });
+  });
+});
+
+// Edit HH submission
 router.post('/api/hh/:customer_id/edit', (req, res) => {
   const { customer_id } = req.params;
+  console.log('POST /api/hh/:customer_id/edit:', customer_id);
   const { subIndex, ...submission } = req.body;
   db.get('SELECT submissions FROM hh WHERE customer_id = ?', [customer_id], (err, row) => {
     if (err) {
-      console.error('Error fetching HH for edit:', err);
+      console.error('Error fetching HH for edit:', err.message);
       return res.status(500).json({ error: 'Database error' });
     }
-    if (!row) return res.status(404).json({ error: 'Household not found' });
-    const submissions = JSON.parse(row.submissions || '[]');
+    if (!row) {
+      console.log('Household not found:', customer_id);
+      return res.status(404).json({ error: 'Household not found' });
+    }
+    let submissions = JSON.parse(row.submissions || '[]');
     if (subIndex < 0 || subIndex >= submissions.length) {
       return res.status(400).json({ error: 'Invalid submission index' });
     }
@@ -216,25 +384,30 @@ router.post('/api/hh/:customer_id/edit', (req, res) => {
     submissions[subIndex] = submission;
     db.run('UPDATE hh SET submissions = ? WHERE customer_id = ?', [JSON.stringify(submissions), customer_id], (err) => {
       if (err) {
-        console.error('Error updating HH submission:', err);
+        console.error('Error updating HH submission:', err.message);
         return res.status(500).json({ error: 'Database update error' });
       }
-      console.log('HH submission edited:', customer_id, subIndex);
+      console.log('HH submission edited:', customer_id);
       res.json({ success: true });
     });
   });
 });
 
+// Edit VEC submission
 router.post('/api/vec/:hamlet/edit', (req, res) => {
   const { hamlet } = req.params;
+  console.log('POST /api/vec/:hamlet/edit:', hamlet);
   const { subIndex, ...submission } = req.body;
-  db.get('SELECT submissions FROM vec WHERE hamlet = ?', [hamlet], (err, row) => {
+  db.get('SELECT submissions FROM vec WHERE lower(hamlet) = lower(?)', [hamlet], (err, row) => {
     if (err) {
-      console.error('Error fetching VEC for edit:', err);
+      console.error('Error fetching VEC for edit:', err.message);
       return res.status(500).json({ error: 'Database error' });
     }
-    if (!row) return res.status(404).json({ error: 'VEC not found' });
-    const submissions = JSON.parse(row.submissions || '[]');
+    if (!row) {
+      console.log('VEC not found:', hamlet);
+      return res.status(404).json({ error: 'VEC not found' });
+    }
+    let submissions = JSON.parse(row.submissions || '[]');
     if (subIndex < 0 || subIndex >= submissions.length) {
       return res.status(400).json({ error: 'Invalid submission index' });
     }
@@ -244,45 +417,50 @@ router.post('/api/vec/:hamlet/edit', (req, res) => {
       return res.status(400).json({ error: 'A submission for this month already exists' });
     }
     submissions[subIndex] = submission;
-    db.run('UPDATE vec SET submissions = ? WHERE hamlet = ?', [JSON.stringify(submissions), hamlet], (err) => {
+    db.run('UPDATE vec SET submissions = ? WHERE lower(hamlet) = lower(?)', [JSON.stringify(submissions), hamlet], (err) => {
       if (err) {
-        console.error('Error updating VEC submission:', err);
+        console.error('Error updating VEC submission:', err.message);
         return res.status(500).json({ error: 'Database update error' });
       }
-      console.log('VEC submission edited:', hamlet, subIndex);
+      console.log('VEC submission edited:', hamlet);
       res.json({ success: true });
     });
   });
 });
 
+// Get all users (operators only)
 router.get('/api/users', (req, res) => {
+  console.log('GET /api/users');
   db.all('SELECT username, password, role, hamlet FROM users WHERE role = "operator"', (err, rows) => {
     if (err) {
-      console.error('Error fetching users:', err);
+      console.error('Error fetching users:', err.message);
       return res.status(500).json({ error: 'Database error' });
     }
     res.json(rows);
   });
 });
 
+// Add user
 router.post('/api/users/add', (req, res) => {
   const { username, password, hamlet } = req.body;
-  db.run('INSERT INTO users (username, password, role, hamlet) VALUES (?, ?, ?, ?)', 
-    [username, password, 'operator', hamlet], (err) => {
-      if (err) {
-        console.error('Error adding user:', err);
-        return res.status(500).json({ error: 'Database error' });
-      }
-      console.log('User added:', { username, hamlet });
-      res.json({ success: true });
-    });
+  console.log('POST /api/users/add:', username);
+  db.run('INSERT INTO users (username, password, role, hamlet) VALUES (?, ?, ?, ?)', [username, password, 'operator', hamlet], (err) => {
+    if (err) {
+      console.error('Error adding user:', err.message);
+      return res.status(500).json({ error: 'Database error' });
+    }
+    console.log('User added:', username);
+    res.json({ success: true });
+  });
 });
 
+// Remove user
 router.post('/api/users/remove', (req, res) => {
   const { username } = req.body;
+  console.log('POST /api/users/remove:', username);
   db.run('DELETE FROM users WHERE username = ? AND role = "operator"', [username], (err) => {
     if (err) {
-      console.error('Error removing user:', err);
+      console.error('Error removing user:', err.message);
       return res.status(500).json({ error: 'Database error' });
     }
     console.log('User removed:', username);
@@ -290,8 +468,10 @@ router.post('/api/users/remove', (req, res) => {
   });
 });
 
+// Bulk upload HH
 router.post('/api/hh/bulk', upload.single('file'), (req, res) => {
   const role = req.headers['x-user-role'] || 'operator';
+  console.log('POST /api/hh/bulk:', { role });
   if (role !== 'spoc') {
     return res.status(403).json({ error: 'Bulk upload restricted to SPOC only' });
   }
@@ -300,11 +480,10 @@ router.post('/api/hh/bulk', upload.single('file'), (req, res) => {
     .pipe(csv())
     .on('data', (data) => results.push(data))
     .on('end', () => {
-      const inserts = results.map(row => 
+      const inserts = results.map(row =>
         new Promise((resolve, reject) => {
           const meterNum = row.meter_num || `M-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-          console.log('Inserting HH:', { customer_id: row.customer_id, hh_name: row.hh_name, hamlet: row.hamlet.trim() });
-          db.run('INSERT OR IGNORE INTO hh (customer_id, hh_name, hamlet, state, district, block, gp, village, vec_name, meter_num, submissions, drafts) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', 
+          db.run('INSERT OR IGNORE INTO hh (customer_id, hh_name, hamlet, state, district, block, gp, village, vec_name, meter_num, submissions, drafts) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
             [row.customer_id, row.hh_name, row.hamlet.trim(), row.state, row.district, row.block, row.gp, row.village, row.vec_name, meterNum, '[]', '[]'], (err) => {
               if (err) reject(err);
               else resolve();
@@ -318,14 +497,16 @@ router.post('/api/hh/bulk', upload.single('file'), (req, res) => {
           res.json({ success: true, count: results.length });
         })
         .catch(err => {
-          console.error('Error during bulk HH upload:', err);
+          console.error('Error during bulk HH upload:', err.message);
           res.status(500).json({ error: 'Database error' });
         });
     });
 });
 
+// Bulk upload VEC
 router.post('/api/vec/bulk', upload.single('file'), (req, res) => {
   const role = req.headers['x-user-role'] || 'operator';
+  console.log('POST /api/vec/bulk:', { role });
   if (role !== 'spoc') {
     return res.status(403).json({ error: 'Bulk upload restricted to SPOC only' });
   }
@@ -334,11 +515,10 @@ router.post('/api/vec/bulk', upload.single('file'), (req, res) => {
     .pipe(csv())
     .on('data', (data) => results.push(data))
     .on('end', () => {
-      const inserts = results.map(row => 
+      const inserts = results.map(row =>
         new Promise((resolve, reject) => {
-          console.log('Inserting VEC:', { hamlet: row.hamlet, vec_name: row.vec_name });
-          db.run('INSERT OR IGNORE INTO vec (hamlet, vec_name, state, district, block, gp, village, microgrid_id, submissions) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)', 
-            [row.hamlet, row.vec_name, row.state, row.district, row.block, row.gp, row.village, row.microgrid_id, '[]'], (err) => {
+          db.run('INSERT OR IGNORE INTO vec (hamlet, vec_name, state, district, block, gp, village, microgrid_id, submissions, drafts) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            [row.hamlet, row.vec_name, row.state, row.district, row.block, row.gp, row.village, row.microgrid_id, '[]', '[]'], (err) => {
               if (err) reject(err);
               else resolve();
             });
@@ -351,20 +531,22 @@ router.post('/api/vec/bulk', upload.single('file'), (req, res) => {
           res.json({ success: true, count: results.length });
         })
         .catch(err => {
-          console.error('Error during bulk VEC upload:', err);
+          console.error('Error during bulk VEC upload:', err.message);
           res.status(500).json({ error: 'Database error' });
         });
     });
 });
 
+// Clear HH submissions and drafts
 router.post('/api/hh/clear', (req, res) => {
   const role = req.headers['x-user-role'] || 'operator';
+  console.log('POST /api/hh/clear:', { role });
   if (role !== 'spoc') {
     return res.status(403).json({ error: 'Clearing submissions restricted to SPOC only' });
   }
   db.run('UPDATE hh SET submissions = "[]", drafts = "[]"', [], (err) => {
     if (err) {
-      console.error('Error clearing HH submissions:', err);
+      console.error('Error clearing HH submissions:', err.message);
       return res.status(500).json({ error: 'Database error' });
     }
     console.log('All HH submissions and drafts cleared');
@@ -372,23 +554,27 @@ router.post('/api/hh/clear', (req, res) => {
   });
 });
 
+// Clear VEC submissions and drafts
 router.post('/api/vec/clear', (req, res) => {
   const role = req.headers['x-user-role'] || 'operator';
+  console.log('POST /api/vec/clear:', { role });
   if (role !== 'spoc') {
     return res.status(403).json({ error: 'Clearing submissions restricted to SPOC only' });
   }
-  db.run('UPDATE vec SET submissions = "[]"', [], (err) => {
+  db.run('UPDATE vec SET submissions = "[]", drafts = "[]"', [], (err) => {
     if (err) {
-      console.error('Error clearing VEC submissions:', err);
+      console.error('Error clearing VEC submissions:', err.message);
       return res.status(500).json({ error: 'Database error' });
     }
-    console.log('All VEC submissions cleared');
+    console.log('All VEC submissions and drafts cleared');
     res.json({ success: true });
   });
 });
 
+// Remove HH submission
 router.post('/api/hh/:customer_id/remove', (req, res) => {
   const { customer_id } = req.params;
+  console.log('POST /api/hh/:customer_id/remove:', customer_id);
   const { subIndex } = req.body;
   const role = req.headers['x-user-role'] || 'operator';
   if (role !== 'spoc') {
@@ -396,53 +582,329 @@ router.post('/api/hh/:customer_id/remove', (req, res) => {
   }
   db.get('SELECT submissions FROM hh WHERE customer_id = ?', [customer_id], (err, row) => {
     if (err) {
-      console.error('Error fetching HH for remove:', err);
+      console.error('Error fetching HH for remove:', err.message);
       return res.status(500).json({ error: 'Database error' });
     }
-    if (!row) return res.status(404).json({ error: 'Household not found' });
-    const submissions = JSON.parse(row.submissions || '[]');
+    if (!row) {
+      console.log('Household not found:', customer_id);
+      return res.status(404).json({ error: 'Household not found' });
+    }
+    let submissions = JSON.parse(row.submissions || '[]');
     if (subIndex < 0 || subIndex >= submissions.length) {
       return res.status(400).json({ error: 'Invalid submission index' });
     }
     submissions.splice(subIndex, 1);
     db.run('UPDATE hh SET submissions = ? WHERE customer_id = ?', [JSON.stringify(submissions), customer_id], (err) => {
       if (err) {
-        console.error('Error removing HH submission:', err);
+        console.error('Error removing HH submission:', err.message);
         return res.status(500).json({ error: 'Database update error' });
       }
-      console.log('HH submission removed:', customer_id, subIndex);
+      console.log('HH submission removed:', customer_id);
       res.json({ success: true });
     });
   });
 });
 
+// Remove VEC submission
 router.post('/api/vec/:hamlet/remove', (req, res) => {
   const { hamlet } = req.params;
+  console.log('POST /api/vec/:hamlet/remove:', hamlet);
   const { subIndex } = req.body;
   const role = req.headers['x-user-role'] || 'operator';
   if (role !== 'spoc') {
     return res.status(403).json({ error: 'Removing submissions restricted to SPOC only' });
   }
-  db.get('SELECT submissions FROM vec WHERE hamlet = ?', [hamlet], (err, row) => {
+  db.get('SELECT submissions FROM vec WHERE lower(hamlet) = lower(?)', [hamlet], (err, row) => {
     if (err) {
-      console.error('Error fetching VEC for remove:', err);
+      console.error('Error fetching VEC for remove:', err.message);
       return res.status(500).json({ error: 'Database error' });
     }
-    if (!row) return res.status(404).json({ error: 'VEC not found' });
-    const submissions = JSON.parse(row.submissions || '[]');
+    if (!row) {
+      console.log('VEC not found:', hamlet);
+      return res.status(404).json({ error: 'VEC not found' });
+    }
+    let submissions = JSON.parse(row.submissions || '[]');
     if (subIndex < 0 || subIndex >= submissions.length) {
       return res.status(400).json({ error: 'Invalid submission index' });
     }
     submissions.splice(subIndex, 1);
-    db.run('UPDATE vec SET submissions = ? WHERE hamlet = ?', [JSON.stringify(submissions), hamlet], (err) => {
+    db.run('UPDATE vec SET submissions = ? WHERE lower(hamlet) = lower(?)', [JSON.stringify(submissions), hamlet], (err) => {
       if (err) {
-        console.error('Error removing VEC submission:', err);
+        console.error('Error removing VEC submission:', err.message);
         return res.status(500).json({ error: 'Database update error' });
       }
-      console.log('VEC submission removed:', hamlet, subIndex);
+      console.log('VEC submission removed:', hamlet);
       res.json({ success: true });
     });
   });
 });
 
-module.exports = router;
+// Delete HH
+router.post('/api/hh/delete', (req, res) => {
+  const role = req.headers['x-user-role'] || 'operator';
+  console.log('POST /api/hh/delete:', { role });
+  if (role !== 'spoc') {
+    return res.status(403).json({ error: 'Deleting households restricted to SPOC only' });
+  }
+  const { id } = req.body;
+  db.run('DELETE FROM hh WHERE customer_id = ?', [id], (err) => {
+    if (err) {
+      console.error('Error deleting HH:', err.message);
+      return res.status(500).json({ error: 'Database error' });
+    }
+    console.log('HH deleted:', id);
+    res.json({ success: true });
+  });
+});
+
+// Delete VEC
+router.post('/api/vec/delete', (req, res) => {
+  const role = req.headers['x-user-role'] || 'operator';
+  console.log('POST /api/vec/delete:', { role });
+  if (role !== 'spoc') {
+    return res.status(403).json({ error: 'Deleting VECs restricted to SPOC only' });
+  }
+  const { id } = req.body;
+  db.run('DELETE FROM vec WHERE hamlet = ?', [id], (err) => {
+    if (err) {
+      console.error('Error deleting VEC:', err.message);
+      return res.status(500).json({ error: 'Database error' });
+    }
+    console.log('VEC deleted:', id);
+    res.json({ success: true });
+  });
+});
+
+// Get HH stats
+router.get('/api/stats/hh', (req, res) => {
+  console.log('GET /api/stats/hh');
+  db.get('SELECT COUNT(*) as count FROM hh', (err, row) => {
+    if (err) {
+      console.error('Error fetching HH stats:', err.message);
+      return res.status(500).json({ error: 'Database error' });
+    }
+    res.json({ count: row.count });
+  });
+});
+
+// Get VEC stats
+router.get('/api/stats/vec', (req, res) => {
+  console.log('GET /api/stats/vec');
+  db.get('SELECT COUNT(*) as count FROM vec', (err, row) => {
+    if (err) {
+      console.error('Error fetching VEC stats:', err.message);
+      return res.status(500).json({ error: 'Database error' });
+    }
+    db.get('SELECT COUNT(*) as pending FROM hh WHERE submissions != "[]"', (err, pendingRow) => {
+      if (err) {
+        console.error('Error fetching pending stats:', err.message);
+        return res.status(500).json({ error: 'Database error' });
+      }
+      res.json({ count: row.count, pending: pendingRow.pending });
+    });
+  });
+});
+
+// Delete HH draft
+router.delete('/api/hh/:customerId/drafts/:index', (req, res) => {
+  const { customerId, index } = req.params;
+  const draftIndex = parseInt(index);
+  const decodedCustomerId = decodeURIComponent(customerId);
+
+  console.log('Deleting HH draft:', { customerId: decodedCustomerId, index: draftIndex });
+
+  db.get('SELECT * FROM hh WHERE customer_id = ?', [decodedCustomerId], (err, row) => {
+    if (err) {
+      console.error('Error fetching HH:', err);
+      return res.status(500).json({ error: 'Failed to fetch HH' });
+    }
+    if (!row) {
+      console.error('HH not found:', decodedCustomerId);
+      return res.status(404).json({ error: 'HH not found' });
+    }
+
+    try {
+      const drafts = row.drafts ? JSON.parse(row.drafts) : [];
+      console.log('Current drafts:', drafts);
+
+      if (draftIndex < 0 || draftIndex >= drafts.length) {
+        console.error('Draft not found:', { draftIndex, draftsLength: drafts.length });
+        return res.status(404).json({ error: 'Draft not found' });
+      }
+
+      drafts.splice(draftIndex, 1);
+      console.log('Updated drafts:', drafts);
+
+      db.run('UPDATE hh SET drafts = ? WHERE customer_id = ?', [JSON.stringify(drafts), decodedCustomerId], function(err) {
+        if (err) {
+          console.error('Error updating HH drafts:', err);
+          return res.status(500).json({ error: 'Failed to delete draft' });
+        }
+        console.log('Draft deleted successfully');
+        res.json({ success: true, message: 'Draft deleted successfully' });
+      });
+    } catch (error) {
+      console.error('Error parsing drafts:', error);
+      res.status(500).json({ error: 'Failed to parse drafts' });
+    }
+  });
+});
+
+// Delete VEC draft
+router.delete('/api/vec/:hamlet/drafts/:index', (req, res) => {
+  const { hamlet, index } = req.params;
+  const draftIndex = parseInt(index);
+  console.log('Deleting VEC draft:', { hamlet, index: draftIndex });
+
+  db.get('SELECT * FROM vec WHERE LOWER(hamlet) = LOWER(?)', [hamlet], (err, row) => {
+    if (err) {
+      console.error('Error fetching VEC:', err);
+      return res.status(500).json({ error: 'Failed to fetch VEC' });
+    }
+    if (!row) {
+      console.error('VEC not found:', hamlet);
+      return res.status(404).json({ error: 'VEC not found' });
+    }
+
+    try {
+      const drafts = JSON.parse(row.drafts || '[]');
+      console.log('Current drafts:', drafts);
+
+      if (draftIndex < 0 || draftIndex >= drafts.length) {
+        console.error('Draft not found:', { draftIndex, draftsLength: drafts.length });
+        return res.status(404).json({ error: 'Draft not found' });
+      }
+
+      drafts.splice(draftIndex, 1);
+      console.log('Updated drafts:', drafts);
+
+      db.run('UPDATE vec SET drafts = ? WHERE LOWER(hamlet) = LOWER(?)', [JSON.stringify(drafts), hamlet], function(err) {
+        if (err) {
+          console.error('Error updating VEC drafts:', err);
+          return res.status(500).json({ error: 'Failed to delete draft' });
+        }
+        console.log('Draft deleted successfully');
+        res.json({ success: true, message: 'Draft deleted successfully' });
+      });
+    } catch (error) {
+      console.error('Error parsing drafts:', error);
+      res.status(500).json({ error: 'Failed to parse drafts' });
+    }
+  });
+});
+
+// Get insurance claims for a hamlet
+router.get('/api/insurance/:hamlet', (req, res) => {
+  const { hamlet } = req.params;
+  console.log('GET /api/insurance/:hamlet:', hamlet);
+
+  db.get('SELECT * FROM insurance_claims WHERE lower(hamlet) = lower(?)', [hamlet], (err, row) => {
+    if (err) {
+      console.error('Error fetching insurance claims:', err.message);
+      return res.status(500).json({ error: 'Database error', details: err.message });
+    }
+    if (!row) {
+      // If no row exists, create one
+      const newRow = {
+        hamlet,
+        submissions: '[]',
+        drafts: '[]'
+      };
+      db.run('INSERT INTO insurance_claims (hamlet, submissions, drafts) VALUES (?, ?, ?)',
+        [hamlet, newRow.submissions, newRow.drafts],
+        (err) => {
+          if (err) {
+            console.error('Error creating insurance claims row:', err.message);
+            return res.status(500).json({ error: 'Database error' });
+          }
+          res.json(newRow);
+        });
+      return;
+    }
+
+    row.submissions = JSON.parse(row.submissions || '[]');
+    row.drafts = JSON.parse(row.drafts || '[]');
+    res.json(row);
+  });
+});
+
+// Get all insurance claims for all hamlets
+router.get('/api/insurance', (req, res) => {
+  console.log('GET /api/insurance');
+
+  db.all('SELECT * FROM insurance_claims', (err, rows) => {
+    if (err) {
+      console.error('Error fetching all insurance claims:', err.message);
+      return res.status(500).json({ error: 'Database error', details: err.message });
+    }
+    const claims = rows.map(row => ({
+      hamlet: row.hamlet,
+      state: row.state,
+      district: row.district,
+      block: row.block,
+      gp: row.gp,
+      village: row.village,
+      vec_name: row.vec_name,
+      microgrid_id: row.microgrid_id,
+      claim_ref_number: row.claim_ref_number,
+      submissions: JSON.parse(row.submissions || '[]'),
+      drafts: JSON.parse(row.drafts || '[]')
+    }));
+    res.json(claims);
+  });
+});
+
+// Submit insurance claim
+router.post('/api/insurance/:hamlet/submit', upload.fields([
+  { name: 'claim_application_photo', maxCount: 1 },
+  { name: 'claiming_for_image', maxCount: 1 }
+]), (req, res) => {
+  const { hamlet } = req.params;
+  console.log('POST /api/insurance/:hamlet/submit:', { hamlet, body: req.body, files: req.files });
+
+  let submission;
+  try {
+    submission = JSON.parse(req.body.submission || '{}');
+    console.log('Parsed submission:', submission);
+  } catch (e) {
+    console.error('Error parsing submission JSON:', e.message);
+    return res.status(400).json({ error: 'Invalid submission data', details: e.message });
+  }
+
+  if (!submission.claim_ref_number) {
+    return res.status(400).json({ error: 'Claim reference number is required' });
+  }
+
+  db.get('SELECT submissions FROM insurance_claims WHERE lower(hamlet) = lower(?)', [hamlet], (err, row) => {
+    if (err) {
+      console.error('Database error fetching insurance claims:', { hamlet, error: err.message, code: err.code });
+      return res.status(500).json({ error: 'Database error', details: err.message });
+    }
+    if (!row) {
+      console.error('Insurance claims not found:', hamlet);
+      return res.status(404).json({ error: 'Insurance claims not found' });
+    }
+    console.log('Insurance claims row:', { hamlet, submissions: row.submissions });
+    let submissions;
+    try {
+      submissions = JSON.parse(row.submissions || '[]');
+    } catch (e) {
+      console.error('Error parsing existing submissions:', e.message);
+      submissions = [];
+    }
+    const submissionData = {
+      ...submission,
+      claim_application_photo: req.files['claim_application_photo'] ? `/Uploads/${req.files['claim_application_photo'][0].filename}` : null,
+      claiming_for_image: req.files['claiming_for_image'] ? `/Uploads/${req.files['claiming_for_image'][0].filename}` : null
+    };
+    submissions.push(submissionData);
+    db.run('UPDATE insurance_claims SET submissions = ? WHERE lower(hamlet) = lower(?)', [JSON.stringify(submissions), hamlet], (err) => {
+      if (err) {
+        console.error('Error saving insurance claim:', { hamlet, error: err.message, code: err.code });
+        return res.status(500).json({ error: 'Database update error', details: err.message });
+      }
+      console.log('Submission saved successfully:', { hamlet, submissionsLength: submissions.length });
+      res.json({ success: true });
+    });
+  });
+});

@@ -1,24 +1,29 @@
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('VEC Data: Script loaded');
   let allData = [];
   let filteredData = [];
   let allHamlets = [];
   let allMonths = [];
 
   function loadData() {
+    console.log('VEC Data: Fetching /api/vec-list');
     fetch('/api/vec-list')
       .then(response => response.json())
       .then(data => {
         allData = data;
+        console.log('VEC Data: Loaded', data.length, 'records');
         const tbody = document.querySelector('#vecTable tbody');
         const hamletLabel = document.getElementById('hamletLabel');
         const hamletDropdown = document.getElementById('hamletDropdown');
         const monthLabel = document.getElementById('monthLabel');
         const monthDropdown = document.getElementById('monthDropdown');
+        const clearFiltersBtn = document.getElementById('clearFiltersBtn');
 
         // Populate hamlet dropdown
         allHamlets = [...new Set(data.map(vec => vec.hamlet))];
         hamletDropdown.innerHTML = '<label><input type="checkbox" value="">All</label>' + 
           allHamlets.map(h => `<label><input type="checkbox" value="${h}">${h}</label>`).join('');
+        console.log('VEC Data: Hamlets:', allHamlets);
 
         // Populate month dropdown
         allMonths = [...new Set(data.flatMap(vec => vec.submissions.map(sub => {
@@ -28,6 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }).filter(m => m)))];
         monthDropdown.innerHTML = '<label><input type="checkbox" value="">All</label>' + 
           allMonths.map(m => `<label><input type="checkbox" value="${m}">${m}</label>`).join('');
+        console.log('VEC Data: Months:', allMonths);
 
         // Toggle dropdowns
         hamletLabel.addEventListener('click', () => toggleDropdown(hamletDropdown));
@@ -40,18 +46,29 @@ document.addEventListener('DOMContentLoaded', () => {
           });
         });
 
+        // Clear filters
+        clearFiltersBtn.addEventListener('click', () => {
+          console.log('VEC Data: Clearing filters');
+          hamletDropdown.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+          monthDropdown.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+          hamletLabel.textContent = 'Hamlet';
+          monthLabel.textContent = 'Month';
+          filterAndRender();
+        });
+
         // Initial render
         filterAndRender();
 
         // CSV download
         document.getElementById('downloadCsvBtn').addEventListener('click', () => {
+          console.log('VEC Data: Downloading CSV');
           const selectedHamlets = Array.from(hamletDropdown.querySelectorAll('input:checked')).map(cb => cb.value).filter(v => v);
           const selectedMonths = Array.from(monthDropdown.querySelectorAll('input:checked')).map(cb => cb.value).filter(v => v);
           const csv = [
-            'Microgrid ID,VEC,Hamlet,Village,GP,Block,District,Date,General Issue,Amount Collected for the Month,Total Saving for the Month,Total Saving,Amount in Bank,Amount in Hand',
+            'Microgrid ID,VEC Name,Hamlet,Village,GP,Block,District,Submission Date,General Issues,Total Monthly Meter Reading HH,Total Meter Reading Grid,Amount Collected for the Month,Amount from Other Source,Total Amount Collected for the Month,Expenditure for the Month,Savings for the Month,Total Savings,Amount in Bank,Amount in Hand',
             ...filteredData.map(sub => {
               const vec = sub.vec;
-              return `${vec.microgrid_id || ''},${vec.vec_name || ''},${vec.hamlet || ''},${vec.village || ''},${vec.gp || ''},${vec.block || ''},${vec.district || ''},${sub.submission_date || ''},${sub.general_issue ? sub.general_issue.join(';') : ''},${sub.amount_collected || ''},${sub.total_saving_month || ''},${sub.total_saving || ''},${sub.amount_in_bank || ''},${sub.amount_in_hand || ''}`;
+              return `${vec.microgrid_id || ''},${vec.vec_name || ''},${vec.hamlet || ''},${vec.village || ''},${vec.gp || ''},${vec.block || ''},${vec.district || ''},${sub.submission_date || ''},${sub.general_issues ? sub.general_issues.join(',') : ''},${sub.total_monthly_meter_reading_hh || ''},${sub.total_meter_reading_grid || ''},${sub.amount_collected || ''},${sub.amount_other_source || ''},${sub.total_amount_collected || ''},${sub.expenditure || ''},${sub.saving_month || ''},${sub.total_saving || ''},${sub.amount_bank || ''},${sub.amount_hand || ''}`;
             })
           ].join('\n');
           const blob = new Blob([csv], { type: 'text/csv' });
@@ -64,7 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, { once: true });
       })
       .catch(error => {
-        console.error('Error fetching VEC data:', error);
+        console.error('VEC Data: Error fetching data:', error);
         alert('Error loading VEC data');
       });
   }
@@ -74,6 +91,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function filterAndRender() {
+    console.log('VEC Data: Filtering and rendering');
     const hamletDropdown = document.getElementById('hamletDropdown');
     const monthDropdown = document.getElementById('monthDropdown');
     const selectedHamlets = Array.from(hamletDropdown.querySelectorAll('input:checked')).map(cb => cb.value).filter(v => v);
@@ -92,20 +110,26 @@ document.addEventListener('DOMContentLoaded', () => {
       const vec = sub.vec;
       const row = document.createElement('tr');
       row.innerHTML = `
-        <td>${vec.microgrid_id || 'N/A'}</td>
-        <td>${vec.vec_name || 'N/A'}</td>
-        <td>${vec.hamlet || 'N/A'}</td>
-        <td>${vec.village || 'N/A'}</td>
-        <td>${vec.gp || 'N/A'}</td>
-        <td>${vec.block || 'N/A'}</td>
+        <td>${vec.state || 'N/A'}</td>
         <td>${vec.district || 'N/A'}</td>
+        <td>${vec.block || 'N/A'}</td>
+        <td>${vec.gp || 'N/A'}</td>
+        <td>${vec.village || 'N/A'}</td>
+        <td>${vec.hamlet || 'N/A'}</td>
+        <td>${vec.vec_name || 'N/A'}</td>
+        <td>${vec.microgrid_id || 'N/A'}</td>
         <td>${sub.submission_date || 'N/A'}</td>
-        <td>${sub.general_issue ? sub.general_issue.join(', ') : 'N/A'}</td>
-        <td>${sub.amount_collected || 'N/A'}</td>
-        <td>${sub.total_saving_month || 'N/A'}</td>
-        <td>${sub.total_saving || 'N/A'}</td>
-        <td>${sub.amount_in_bank || 'N/A'}</td>
-        <td>${sub.amount_in_hand || 'N/A'}</td>
+        <td>${sub.general_issues ? sub.general_issues.join(', ') : 'N/A'}</td>
+        <td>${sub.total_monthly_meter_reading_hh || '0'}</td>
+        <td>${sub.total_meter_reading_grid || '0'}</td>
+        <td>${sub.amount_collected || '0'}</td>
+        <td>${sub.amount_other_source || '0'}</td>
+        <td>${sub.total_amount_collected || '0'}</td>
+        <td>${sub.expenditure || '0'}</td>
+        <td>${sub.saving_month || '0'}</td>
+        <td>${sub.total_saving || '0'}</td>
+        <td>${sub.amount_bank || '0'}</td>
+        <td>${sub.amount_hand || '0'}</td>
       `;
       tbody.appendChild(row);
     });
@@ -115,10 +139,12 @@ document.addEventListener('DOMContentLoaded', () => {
   loadData();
 
   document.getElementById('backBtn').addEventListener('click', () => {
+    console.log('VEC Data: Back to spoc-dashboard');
     window.location.href = '/spoc-dashboard.html';
   });
 
   document.getElementById('logoutBtn').addEventListener('click', () => {
+    console.log('VEC Data: Logout clicked');
     localStorage.clear();
     window.location.href = '/index.html';
   });

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Insurance Usage Tracker Form</title>
+  <link rel="stylesheet" href="/styles.css?v=11" />
+</head>
+<body data-page="insurance-usage-form">
+  <div class="dashboard-container insurance-usage-form-container">
+    <header class="dashboard-header">
+      <div class="header-content">
+        <h1>Solar Microgrid Project</h1>
+        <p class="page-title">Insurance Usage Tracker Form</p>
+      </div>
+      <button id="logoutBtn" class="logout-btn">Logout</button>
+    </header>
+    <main>
+      <div class="insurance-usage-form-inner-container">
+        <form id="insuranceUsageForm" class="form-card" enctype="multipart/form-data">
+          <div class="form-group">
+            <label for="fiscalYear">Fiscal Year <span class="required">*</span></label>
+            <select id="fiscalYear" name="fiscalYear" required>
+              <option value="">Select Fiscal Year</option>
+              <option value="2025-26">2025-26</option>
+              <option value="2026-27">2026-27</option>
+              <option value="2027-28">2027-28</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="usageDate">Date <span class="required">*</span></label>
+            <input type="date" id="usageDate" name="usageDate" required />
+          </div>
+          <div class="form-group">
+            <label for="receiptId">Receipt ID</label>
+            <input type="text" id="receiptId" name="receiptId" readonly required />
+          </div>
+          <div class="form-group">
+            <label for="insuranceAmountUsed">Insurance Amount Used <span class="required">*</span></label>
+            <input type="number" id="insuranceAmountUsed" name="insuranceAmountUsed" min="0" step="0.01" required />
+          </div>
+          <div class="form-group">
+            <label for="usedFor">Used For <span class="required">*</span></label>
+            <select id="usedFor" name="usedFor" required>
+              <option value="">Select</option>
+              <option value="claimByVec">Claim by VEC</option>
+              <option value="inventoryPurchasing">Inventory Purchasing</option>
+              <option value="otherExpenditure">Other Expenditure</option>
+            </select>
+          </div>
+          <div class="form-group" id="specifyOtherGroup" style="display:none;">
+            <label for="specifyOther">Please Specify <span class="required">*</span></label>
+            <input type="text" id="specifyOther" name="specifyOther" />
+          </div>
+          <div class="form-group" id="blockGroup" style="display:none;">
+            <label for="block">Block <span class="required">*</span></label>
+            <select id="block" name="block">
+              <option value="">Select Block</option>
+              <option value="Kurdeg">Kurdeg</option>
+              <option value="Kersai">Kersai</option>
+              <option value="Bolba">Bolba</option>
+            </select>
+          </div>
+          <div class="form-group" id="hamletGroup" style="display:none;">
+            <label for="hamlet">Hamlet <span class="required">*</span></label>
+            <select id="hamlet" name="hamlet">
+              <option value="">Select Hamlet</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="addImage">Add Image <span class="required">*</span></label>
+            <input type="file" id="addImage" name="addImage" accept="image/*" capture="environment" required />
+          </div>
+          <div class="form-group">
+            <label for="insuranceAmountLeft">Insurance Amount Left</label>
+            <input type="number" id="insuranceAmountLeft" name="insuranceAmountLeft" readonly required />
+          </div>
+          <div class="button-group">
+            <button type="button" id="draftBtn" class="form-btn draft-btn">Save Draft</button>
+            <button type="submit" id="submitBtn" class="form-btn">Submit</button>
+            <button type="button" id="backBtn" class="form-btn back-btn">Back</button>
+          </div>
+        </form>
+      </div>
+    </main>
+  </div>
+  <script src="/scripts/insurance-usage-form.js"></script>
+</body>
+</html>

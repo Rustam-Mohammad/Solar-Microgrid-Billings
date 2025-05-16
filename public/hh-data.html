@@ -2,134 +2,62 @@
 <html>
 <head>
   <title>HH Data</title>
-  <link rel="stylesheet" href="/styles.css">
-  <style>
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin: 20px 0;
-    }
-    th, td {
-      border: 1px solid #ddd;
-      padding: 8px;
-      text-align: left;
-    }
-    th {
-      background-color: #f2f2f2;
-    }
-    .filter-container {
-      display: flex;
-      gap: 15px;
-      align-items: center;
-      margin: 20px 0;
-      flex-wrap: wrap;
-    }
-    .dropdown {
-      position: relative;
-      display: inline-block;
-    }
-    .dropdown-label {
-      padding: 8px 24px 8px 12px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      background-color: #fff;
-      cursor: pointer;
-      font-size: 14px;
-      min-width: 150px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      position: relative;
-    }
-    .dropdown-label::after {
-      content: '▼';
-      position: absolute;
-      right: 8px;
-      font-size: 12px;
-    }
-    .dropdown-content {
-      display: none;
-      position: absolute;
-      background-color: #fff;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-      z-index: 1;
-      min-width: 150px;
-      max-height: 200px;
-      overflow-y: auto;
-    }
-    .dropdown-content label {
-      display: flex;
-      align-items: center;
-      padding: 8px 12px;
-      cursor: pointer;
-    }
-    .dropdown-content label:hover {
-      background-color: #f5f5f5;
-    }
-    .dropdown-content input[type="checkbox"] {
-      margin-right: 8px;
-    }
-    .filter-container button {
-      padding: 8px 16px;
-      border: none;
-      border-radius: 4px;
-      background-color: #26A69A; /* Teal */
-      color: white;
-      cursor: pointer;
-      font-size: 14px;
-      transition: background-color 0.3s;
-    }
-    .filter-container button:hover {
-      background-color: #2C7A7B; /* Darker teal */
-    }
-    img {
-      max-width: 100px;
-      cursor: pointer;
-    }
-  </style>
+  <link rel="stylesheet" href="/styles.css?v=11">
+  <link href="https://fonts.googleapis.com/css2?family=Segoe UI:wght@400;700&display=swap" rel="stylesheet">
 </head>
-<body>
-  <button id="logoutBtn" class="logout-btn">Logout</button>
-  <h1>HH Data</h1>
-  <div class="filter-container">
-    <div class="dropdown">
-      <div class="dropdown-label" id="hamletLabel">Hamlet</div>
-      <div class="dropdown-content" id="hamletDropdown"></div>
+<body data-page="hh-data">
+  <div class="dashboard-container">
+    <header class="dashboard-header">
+      <div class="header-content">
+        <h1>Solar Microgrid Project</h1>
+        <p class="page-title">HH Data</p>
+      </div>
+      <button id="logoutBtn" class="logout-btn">Logout</button>
+    </header>
+    <div class="filter-container">
+      <div class="dropdown">
+        <div class="dropdown-label" id="hamletLabel">Hamlet</div>
+        <div class="dropdown-content" id="hamletDropdown"></div>
+      </div>
+      <div class="dropdown">
+        <div class="dropdown-label" id="monthLabel">Month</div>
+        <div class="dropdown-content" id="monthDropdown"></div>
+      </div>
+      <button id="clearFiltersBtn" class="form-btn">Clear Filters</button>
+      <button id="downloadCsvBtn" class="download-btn">Download as CSV</button>
     </div>
-    <div class="dropdown">
-      <div class="dropdown-label" id="monthLabel">Month</div>
-      <div class="dropdown-content" id="monthDropdown"></div>
-    </div>
-    <button id="downloadCsvBtn">Download as CSV</button>
+    <table id="hhTable" class="data-table">
+      <thead>
+        <tr>
+          <th>State</th>
+          <th>District</th>
+          <th>Block</th>
+          <th>GP</th>
+          <th>Village</th>
+          <th>Hamlet</th>
+          <th>VEC Name</th>
+          <th>Microgrid ID</th>
+          <th>Head of Household</th>
+          <th>Meter Serial Number</th>
+          <th>Customer ID</th>
+          <th>Gender</th>
+          <th>Date of Reading</th>
+          <th>Individual Issues</th>
+          <th>Bill Number</th>
+          <th>Current Meter Reading</th>
+          <th>Previous Month Reading</th>
+          <th>Units Consumed</th>
+          <th>Current Month Bill</th>
+          <th>Past Dues</th>
+          <th>Total Bill Due</th>
+          <th>Amount Paid</th>
+          <th>Balance Amount</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+    <button id="backBtn" class="large-back-btn">Back</button>
   </div>
-  <table id="hhTable">
-    <thead>
-      <tr>
-        <th>Customer ID</th>
-        <th>HH Name</th>
-        <th>Date</th>
-        <th>Meter Reading</th>
-        <th>Units Consumed</th>
-        <th>Current Bill</th>
-        <th>Past Due</th>
-        <th>Total Due</th>
-        <th>Amount Paid</th>
-        <th>Balance</th>
-        <th>VEC</th>
-        <th>Hamlet</th>
-        <th>Village</th>
-        <th>GP</th>
-        <th>Block</th>
-        <th>District</th>
-        <th>Meter Reading Image</th>
-        <th>Individual Issue</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
-  <button id="backBtn" class="back-btn">Back</button>
-  <script src="/scripts/hh-data.js"></script>
+  <script src="/scripts/hh-data.js?v=11"></script>
 </body>
 </html>

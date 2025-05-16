@@ -1,9 +1,18 @@
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('User Management: Script loaded');
   const role = localStorage.getItem('role');
   if (role !== 'spoc') {
+    console.log('User Management: Access restricted, redirecting');
     alert('Access restricted to SPOC only!');
     window.location.href = '/index.html';
     return;
+  }
+
+  const username = localStorage.getItem('username');
+  const usernameDisplay = document.getElementById('usernameDisplay');
+  if (usernameDisplay && username) {
+    usernameDisplay.textContent = username;
+    console.log('User Management: Username set to', username);
   }
 
   const addUserBtn = document.getElementById('addUserBtn');
@@ -13,6 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Load user list
   function loadUsers() {
+    console.log('User Management: Fetching /api/users');
     fetch('/api/users')
       .then(response => response.json())
       .then(users => {
@@ -23,7 +33,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <td>${user.username}</td>
             <td class="password-cell">
               <span class="password" data-password="${user.password}">****</span>
-              <button class="toggle-password">Show</button>
+              <button class="form-btn toggle-password">Show</button>
             </td>
             <td>${user.hamlet || 'N/A'}</td>
             <td><button class="remove-btn" data-username="${user.username}">Remove</button></td>
@@ -51,6 +61,7 @@ document.addEventListener('DOMContentLoaded', () => {
           btn.addEventListener('click', () => {
             const username = btn.getAttribute('data-username');
             if (confirm(`Are you sure you want to remove user "${username}"?`)) {
+              console.log('User Management: Removing user', username);
               fetch('/api/users/remove', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -60,13 +71,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 .then(data => {
                   if (data.success) {
                     alert('User removed successfully');
-                    loadUsers(); // Refresh table
+                    loadUsers();
                   } else {
                     alert('Failed to remove user');
                   }
                 })
                 .catch(error => {
-                  console.error('Error removing user:', error);
+                  console.error('User Management: Error removing user:', error);
                   alert('Error removing user');
                 });
             }
@@ -74,7 +85,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
       })
       .catch(error => {
-        console.error('Error fetching users:', error);
+        console.error('User Management: Error fetching users:', error);
         alert('Error loading user list');
       });
   }
@@ -84,7 +95,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Toggle Add User form
   addUserBtn.addEventListener('click', () => {
-    addUserFormDiv.style.display = addUserFormDiv.style.display === 'none' ? 'block' : 'none';
+    const isHidden = addUserFormDiv.style.display === 'none';
+    addUserFormDiv.style.display = isHidden ? 'block' : 'none';
+    console.log('User Management: Add user form', isHidden ? 'shown' : 'hidden');
   });
 
   // Handle Add User form submission
@@ -93,6 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const username = addUserForm.username.value;
     const password = addUserForm.password.value;
     const hamlet = addUserForm.hamlet.value;
+    console.log('User Management: Adding user', username);
     fetch('/api/users/add', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -104,24 +118,26 @@ document.addEventListener('DOMContentLoaded', () => {
           alert('User added successfully');
           addUserForm.reset();
           addUserFormDiv.style.display = 'none';
-          loadUsers(); // Refresh table
+          loadUsers();
         } else {
           alert('Failed to add user');
         }
       })
       .catch(error => {
-        console.error('Error adding user:', error);
+        console.error('User Management: Error adding user:', error);
         alert('Error adding user');
       });
   });
 
   // Back button
   document.getElementById('backBtn').addEventListener('click', () => {
+    console.log('User Management: Back to spoc-dashboard');
     window.location.href = '/spoc-dashboard.html';
   });
 
   // Logout button
   document.getElementById('logoutBtn').addEventListener('click', () => {
+    console.log('User Management: Logout clicked');
     localStorage.clear();
     window.location.href = '/index.html';
   });

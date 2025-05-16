@@ -1,60 +1,193 @@
 document.addEventListener('DOMContentLoaded', () => {
+  console.log('vec-submissions.js loaded');
   const urlParams = new URLSearchParams(window.location.search);
-  const hamlet = urlParams.get('hamlet') || localStorage.getItem('hamlet');
+  let hamlet = urlParams.get('hamlet');
+  const container = document.querySelector('.vec-submissions-container');
+
   if (!hamlet) {
-    alert('No hamlet specified!');
+    hamlet = container.getAttribute('data-hamlet') || localStorage.getItem('hamlet');
+  }
+
+  console.log('Hamlet determined:', hamlet);
+
+  if (!hamlet) {
+    console.error('No hamlet specified');
+    alert('Error: No hamlet specified. Please try again.');
     window.location.href = '/dashboard.html';
     return;
   }
-  document.getElementById('hamlet').textContent = hamlet;
 
-  fetch('/api/vec/' + encodeURIComponent(hamlet))
+  document.getElementById('hamlet').textContent = hamlet;
+  container.setAttribute('data-hamlet', hamlet);
+
+  fetch(`/api/vec/${encodeURIComponent(hamlet)}`)
     .then(response => {
-      if (!response.ok) throw new Error('Failed to fetch VEC data: ' + response.status);
+      console.log('Fetch /api/vec response:', { status: response.status, ok: response.ok });
+      if (!response.ok) {
+        throw new Error(`HTTP error ${response.status}`);
+      }
       return response.json();
     })
     .then(vecData => {
+      console.log('VEC data received:', vecData);
       const submissions = vecData.submissions || [];
+      const drafts = vecData.drafts || [];
+      console.log('Submissions:', submissions);
+      console.log('Drafts:', drafts);
       const submissionsDiv = document.getElementById('submissions');
-      if (submissionsDiv) {
-        submissionsDiv.innerHTML = '';
-        if (submissions.length === 0) {
-          submissionsDiv.innerHTML = '<p>No submissions yet.</p>';
-        } else {
+      submissionsDiv.innerHTML = '';
+
+      if (submissions.length === 0 && drafts.length === 0) {
+        submissionsDiv.innerHTML = '<p>No submissions or drafts yet.</p>';
+      } else {
+        // Render Submissions
+        if (submissions.length > 0) {
           submissions.forEach((submission, index) => {
+            console.log('Rendering submission:', {
+              index,
+              submission_date: submission.submission_date,
+              total_amount_collected_for_the_Month: submission.total_amount_collected_for_the_Month
+            });
             const card = document.createElement('div');
             card.className = 'submission-card';
             card.innerHTML = `
               <h3>Submission ${index + 1}</h3>
-              <p>Date: ${submission.submission_date || 'N/A'}</p>
-              <p>Amount Collected: ${submission.amount_collected || 'N/A'}</p>
-              <p>Expenditure: ${submission.expenditure || 'N/A'}</p>
-              <p>Total Saving for Month: ${submission.total_saving_month || 'N/A'}</p>
-              <p>Total Saving: ${submission.total_saving || 'N/A'}</p>
-              <p>Amount in Bank: ${submission.amount_in_bank || 'N/A'}</p>
-              <p>Amount in Hand: ${submission.amount_in_hand || 'N/A'}</p>
-              <p>General Issues: ${submission.general_issue ? submission.general_issue.join(', ') : 'None'}</p>
+            <p><strong>Date:</strong> ${submission.submission_date || 'N/A'}</p>
+            <p><strong>Amount Collected:</strong> ${submission.amount_collected || '0'}</p>
+              <div class="button-group">
+                <button class="view-btn" data-index="${index}" data-hamlet="${hamlet}" data-type="submission">View</button>
+              </div>
             `;
             submissionsDiv.appendChild(card);
           });
+        } else {
+          console.log('No submissions to render');
         }
+
+        // Render Drafts
+        if (drafts.length > 0) {
+          drafts.forEach((draft, index) => {
+            console.log('Rendering draft:', {
+              index,
+              submission_date: draft.submission_date,
+              total_amount_collected_for_the_Month: draft.total_amount_collected_for_the_Month
+            });
+            const card = document.createElement('div');
+            card.className = 'submission-card draft-card';
+            card.innerHTML = `
+              <h3>Draft ${index + 1}</h3>
+            <p><strong>Date:</strong> ${draft.submission_date || 'Not set'}</p>
+            <p><strong>Amount Collected:</strong> ${draft.amount_collected || '0'}</p>
+              <div class="button-group">
+                <button class="view-btn" data-index="${index}" data-hamlet="${hamlet}" data-type="draft">View</button>
+                <button class="edit-btn" data-index="${index}" data-hamlet="${hamlet}" data-type="draft">Edit</button>
+                <button class="delete-btn" data-index="${index}" data-hamlet="${hamlet}" data-type="draft">Delete</button>
+              </div>
+            `;
+            submissionsDiv.appendChild(card);
+          });
+        } else {
+          console.log('No drafts to render');
+          submissionsDiv.innerHTML += '<p>No drafts available.</p>';
+        }
+
+        // Attach View button listeners
+        document.querySelectorAll('.view-btn').forEach(button => {
+          button.addEventListener('click', () => {
+            const index = button.getAttribute('data-index');
+            const btnHamlet = button.getAttribute('data-hamlet');
+            const type = button.getAttribute('data-type');
+            console.log('View button clicked:', { index, hamlet: btnHamlet, type });
+            const url = `/vec-form.html?hamlet=${encodeURIComponent(btnHamlet)}&${type}=${index}&mode=readonly`;
+            console.log('Redirecting to:', url);
+            window.location.href = url;
+          });
+        });
+
+        // Attach Edit button listeners
+        document.querySelectorAll('.edit-btn').forEach(button => {
+          button.addEventListener('click', () => {
+            const index = button.getAttribute('data-index');
+            const btnHamlet = button.getAttribute('data-hamlet');
+            console.log('Edit button clicked:', { index, hamlet: btnHamlet });
+            const url = `/vec-form.html?hamlet=${encodeURIComponent(btnHamlet)}&draft=${index}`;
+            console.log('Redirecting to:', url);
+            window.location.href = url;
+          });
+        });
+
+        // Attach Delete button listeners
+        document.querySelectorAll('.delete-btn').forEach(button => {
+          button.addEventListener('click', () => {
+            const index = button.getAttribute('data-index');
+            const btnHamlet = button.getAttribute('data-hamlet');
+            const type = button.getAttribute('data-type');
+            
+            if (confirm('Are you sure you want to delete this draft? This action cannot be undone.')) {
+              console.log('Delete button clicked:', { index, hamlet: btnHamlet, type });
+              fetch(`/api/vec/${encodeURIComponent(btnHamlet)}/drafts/${index}`, {
+                method: 'DELETE',
+                headers: {
+                  'Content-Type': 'application/json'
+                }
+              })
+              .then(response => {
+                if (!response.ok) {
+                  return response.json().then(err => {
+                    throw new Error(err.error || 'Failed to delete draft');
+                  });
+                }
+                return response.json();
+              })
+              .then(data => {
+                console.log('Delete response:', data);
+                alert('Draft deleted successfully');
+                window.location.reload();
+              })
+              .catch(error => {
+                console.error('Error deleting draft:', error);
+                alert(error.message || 'Error deleting draft. Please try again.');
+              });
+            }
+          });
+        });
       }
     })
     .catch(error => {
-      console.error('Error fetching VEC data:', error);
-      alert('Error loading submissions: ' + error.message);
+      console.error('Error fetching submissions:', error.message);
+      document.getElementById('submissions').innerHTML = '<p>Error loading submissions. Please try again later.</p>';
     });
 
-  document.getElementById('newEntryBtn').addEventListener('click', () => {
-    window.location.href = `/vec-form.html?hamlet=${encodeURIComponent(hamlet)}`;
-  });
+  const newEntryBtn = document.getElementById('newEntryBtn');
+  if (newEntryBtn) {
+    newEntryBtn.addEventListener('click', () => {
+      console.log('New Entry button clicked');
+      const url = `/vec-form.html?hamlet=${encodeURIComponent(hamlet)}`;
+      console.log('Redirecting to:', url);
+      window.location.href = url;
+    });
+  } else {
+    console.error('Error: #newEntryBtn not found in DOM');
+  }
 
-  document.getElementById('backBtn').addEventListener('click', () => {
-    window.location.href = localStorage.getItem('role') === 'spoc' ? '/spoc-dashboard.html' : '/dashboard.html';
-  });
+  const backBtn = document.getElementById('backBtn');
+  if (backBtn) {
+    backBtn.addEventListener('click', () => {
+      console.log('Back button clicked');
+      window.location.href = '/dashboard.html';
+    });
+  } else {
+    console.error('Error: #backBtn not found in DOM');
+  }
 
-  document.getElementById('logoutBtn').addEventListener('click', () => {
-    localStorage.clear();
-    window.location.href = '/index.html';
-  });
+  const logoutBtn = document.getElementById('logoutBtn');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', () => {
+      console.log('Logout button clicked');
+      localStorage.clear();
+      window.location.href = '/index.html';
+    });
+  } else {
+    console.error('Error: #logoutBtn not found in DOM');
+  }
 });

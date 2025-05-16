@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Insurance Premium Form</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body data-page="insurance-premium-form">
+  <div class="dashboard-container">
+    <header class="dashboard-header">
+      <div class="header-content">
+        <h1>Solar Microgrid Project</h1>
+        <p class="page-title">Insurance Premium Submissions</p>
+      </div>
+      <button id="logoutBtn" class="logout-btn">Logout</button>
+    </header>
+    <div class="insurance-premium-submissions-container">
+      <div class="button-group">
+        <button id="backBtn" class="form-btn back-btn">Back</button>
+        <button id="newEntryBtn" class="form-btn new-entry-btn" onclick="window.location.href='/insurance-premium-form.html'">New Entry</button>
+      </div>
+      <div id="submissions"></div>
+    </div>
+    </div>
+  </div>
+  <script>
+    console.log('Inline script in insurance-premium-form.html loaded');
+  </script>
+  <script src="/scripts/insurance-premium-submissions.js"></script>
+</body>
+</html>

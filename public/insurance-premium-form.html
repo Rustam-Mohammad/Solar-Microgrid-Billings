@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Insurance Premium Form</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body data-page="insurance-premium-form">
+  <div class="dashboard-container">
+    <header class="dashboard-header">
+      <div class="header-content">
+        <h1>Solar Microgrid Project</h1>
+        <p class="page-title">Insurance Premium Form</p>
+      </div>
+      <button id="logoutBtn" class="logout-btn">Logout</button>
+    </header>
+    <div class="insurance-premium-form-container vec-form-container">
+      <form id="insurancePremiumForm" enctype="multipart/form-data">
+        <div class="form-group" id="hamletGroup" style="display:block;">
+          <label for="hamlet">Hamlet <span class="required">*</span></label>
+          <select id="hamlet" name="hamlet" required>
+            <option value="">Select Hamlet</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="state">State <span class="required">*</span></label>
+          <input type="text" id="state" name="state" readonly required />
+        </div>
+        <div class="form-group">
+          <label for="district">District <span class="required">*</span></label>
+          <input type="text" id="district" name="district" readonly required />
+        </div>
+        <div class="form-group">
+          <label for="block">Block <span class="required">*</span></label>
+          <input type="text" id="block" name="block" readonly required />
+        </div>
+        <div class="form-group">
+          <label for="gp">GP <span class="required">*</span></label>
+          <input type="text" id="gp" name="gp" readonly required />
+        </div>
+        <div class="form-group">
+          <label for="village">Village <span class="required">*</span></label>
+          <input type="text" id="village" name="village" readonly required />
+        </div>
+        <div class="form-group">
+          <label for="vecName">VEC Name <span class="required">*</span></label>
+          <input type="text" id="vecName" name="vecName" readonly required />
+        </div>
+        <div class="form-group">
+          <label for="microGridId">Micro Grid ID <span class="required">*</span></label>
+          <input type="text" id="microGridId" name="microGridId" readonly required />
+        </div>
+        <div class="form-group">
+          <label for="fiscalYear">Fiscal Year <span class="required">*</span></label>
+          <select id="fiscalYear" name="fiscalYear" required>
+            <option value="">Select Fiscal Year</option>
+            <option value="2025-26">2025-26</option>
+            <option value="2026-27">2026-27</option>
+            <option value="2027-28">2027-28</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="premiumAmountDecided">Premium Amount Decided by IC <span class="required">*</span></label>
+          <input type="number" id="premiumAmountDecided" name="premiumAmountDecided" required min="0" step="0.01" />
+        </div>
+        <div class="form-group">
+          <label for="premiumAmountPaid">Premium Amount Paid <span class="required">*</span></label>
+          <select id="premiumAmountPaid" name="premiumAmountPaid" required>
+            <option value="">Select</option>
+            <option value="Yes">Yes</option>
+            <option value="No">No</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="referenceId">Reference ID</label>
+          <input type="text" id="referenceId" name="referenceId" readonly />
+        </div>
+        <div class="form-group">
+          <label for="dateOfPayment">Date of Payment <span class="required">*</span></label>
+          <input type="date" id="dateOfPayment" name="dateOfPayment" required />
+        </div>
+        <div class="form-group">
+          <label for="receiptImage">Receipt Image <span class="required">*</span></label>
+          <input type="file" id="receiptImage" name="receiptImage" accept="image/*" capture="environment" required />
+        </div>
+        <div class="button-group">
+          <button type="button" id="draftBtn" class="form-btn draft-btn">Save Draft</button>
+          <button type="submit" id="submitBtn" class="form-btn">Submit</button>
+          <button type="button" id="backBtn" class="form-btn back-btn">Back</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <script src="/scripts/insurance-premium-form.js"></script>
+</body>
+</html>
